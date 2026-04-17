@@ -1,0 +1,122 @@
+{
+  "tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f1_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f1_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f1_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f1_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f1_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f1_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f2_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f2_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f2_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f2_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f2_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f2_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f3_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f3_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f3_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f3_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f3_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f3_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f4_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f4_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f4_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f4_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f4_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "f4_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  }
+}

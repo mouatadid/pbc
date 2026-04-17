@@ -1,0 +1,182 @@
+{
+  "tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f1_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f1_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f1_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f1_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f1_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f1_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f2_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f2_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f2_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f2_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f2_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f2_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f3_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f3_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f3_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f3_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f3_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f3_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f4_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f4_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f4_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f4_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f4_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "f4_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+  }
+}

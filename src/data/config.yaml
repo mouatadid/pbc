@@ -1,0 +1,61 @@
+# Base directory to store all downloaded Zarr datasets
+data_dir: "~/aiwq/data"
+
+# Standard variable names
+variables: 
+  temperature: "tas"
+  precipitation: "pr"
+  # total_precipitable_water: "tpw"
+  mean_sea_level_pressure: "mslp"
+  sea_surface_temperature: "sst"
+
+# Data Latency (days, approximate delay before data is available)
+latency:
+  ecmwf: 2
+  era5: 5
+  sst: 2
+
+# Target grid specification
+target_grid:
+  resolution_deg: 1.5
+  lon: [0.0, 1.5, ..., 358.5]
+  lat: [-90.0, -88.5, ..., 90.0]
+
+# API Credentials (Use environment variables or a secure method in production)
+cds_api:
+  url: "https://cds.climate.copernicus.eu/api/v2"
+  key_path: "~/.cdsapirc"
+
+# Specific dataset configurations (can add URLs, variable names, etc.)
+sources:
+  ecmwf:
+  era5:
+    variables_shortcode:
+      temperature: "t2m"
+      precipitation: "tp"
+      mean_sea_level_pressure: "msl"
+      # total_precipitable_water: "tcwv"
+    variables:
+      temperature: "2m_temperature"
+      precipitation: "total_precipitation"
+      mean_sea_level_pressure: "mean_sea_level_pressure"
+      # total_precipitable_water: "total_column_water_vapour"
+  aiwq:
+    password: ADDME
+    variables_shortcode:
+      temperature: "tas"
+      precipitation: "pr"
+      mean_sea_level_pressure: "mslp"
+    variables:
+      temperature: "2m_temperature"
+      precipitation: "total_precipitation"
+      mean_sea_level_pressure: "mean_sea_level_pressure"
+  era5_land:
+    native_res: 0.1
+    variables:
+      swvl1: "volumetric_soil_water_layer_1"
+  sst:
+    base_url: "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr"
+    native_res: 0.25
+    variables:
+      sea_surface_temperature: "sst"

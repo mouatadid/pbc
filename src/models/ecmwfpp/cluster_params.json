@@ -1,0 +1,18 @@
+{
+    "global":
+    {
+        "default":
+        {
+            "vm-type": "c2-standard-16",
+            "disk-size": "60GiB"
+        }
+    },
+    "us":
+    {
+        "default":
+        {
+            "vm-type": "c2-standard-16",
+            "disk-size": "40GiB"
+        }
+    }
+}
