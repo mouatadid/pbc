@@ -4,13 +4,13 @@ Probabilistic bias correction (PBC) is a machine learning framework for improvin
 
 To learn more, see the accompanying study:
 
-[Enhancing AI and Dynamical Subseasonal Forecasts with Probabilistic Bias Correction](https://arxiv.org)
+[Enhancing AI and Dynamical Subseasonal Forecasts with Probabilistic Bias Correction](https://arxiv.org/abs/2604.16238)
 
 ```bib
 @article{guan2026enhancing,
   author = {Hannah Guan and Soukayna Mouatadid and Paulo Orenstein and Judah Cohen and Haiyu Dong and Zekun Ni and Jeremy Berman and Genevieve Flaspohler and Alex Lu and Jakob Schloer and Joshua Talib and Jonathan A. Weyn and Lester Mackey},
   title = {Enhancing AI and Dynamical Subseasonal Forecasts with Probabilistic Bias Correction},
-  journal = {arXiv preprint},
+  journal={arXiv preprint arXiv:2604.16238},
   year = {2026}
 }
 ```
