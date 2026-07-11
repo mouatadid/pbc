@@ -8,9 +8,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: aiwqd
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -21,6 +21,7 @@ Predicts outcomes using debiased ECMWF forecasts from Zarr data
 
 Example usages:
   python src/models/debiased_ecmwf/batch_predict.py era5-f3_tas 19 -t std_test
+  python src/models/debiased_ecmwf/batch_predict.py era5-F10_tas 19 -t std_test
 
   for dates in std_msn_forecast; do
     for var in tas mslp pr; do
@@ -32,8 +33,18 @@ Example usages:
     done;
   done
 
+  for dates in std_test; do
+    for var in tas mslp pr; do
+      for f in F5 F10 F90 F95; do
+        for horizon in 19 26; do
+          src/batch/batch_python.sh --memory 10 --cores 1 --hours 1 src/models/debiased_ecmwf/batch_predict.py era5-${f}_${var} ${horizon} -t $dates;   
+        done;
+      done;
+    done;
+  done
+
 Positional args:
-  gt_id: e.g., era5-f1_tas
+  gt_id: e.g., era5-f1_tas, era5-F5_tas
   horizon: 19 or 26
 
 Named args:
@@ -82,7 +93,7 @@ if not isnotebook():
     target_dates = args.target_dates
 else:
     # Otherwise, specify arguments interactively 
-    gt_id =  "era5-f1_tas"
+    gt_id =  "era5-F10_pr"
     horizon = "26"
     target_dates = "20160122"
 
@@ -154,3 +165,5 @@ for target_date_obj in sorted(forecast_targets):
     printf(f"Saving to {preds_f}")
     save_to_netcdf(pred, preds_f)
     toc()
+
+# %%

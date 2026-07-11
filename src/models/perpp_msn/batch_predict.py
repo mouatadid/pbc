@@ -17,25 +17,35 @@
 # ---
 
 # %%
-#
-# Persistence++ with MSN AI model
-#
-# Regress onto MSN forecasts, climatology, and lagged measurements
-#
-# Example usage:
-#   python src/models/perpp_msn/batch_predict.py era5-f2_mslp 26 -t std_future -y all -m None
-#
-# Positional args:
-#   gt_id: era5-tas, era5-pr, era5-mslp, etc.
-#   horizon: 19 or 26
-#
-# Named args:
-#   --target_dates (-t): target dates for batch prediction 
-#   --train_years (-y): number of years to use in training ("all" or integer)
-#   --margin_in_days (-m): number of month-day combinations on either side of the target combination to include when training
-#     Set to 0 to include only target month-day combo
-#     Set to "None" to include entire year
-#   --date_order_seed (-s): if None, sort target_dates in order (as usual), otherwise randomize order of target_dates
+'''
+Persistence++ with MSN AI model
+
+Regress onto MSN forecasts, climatology, and lagged measurements
+
+Example usages:
+  python src/models/perpp_msn/batch_predict.py era5-f2_mslp 26 -t std_future -y all -m None
+  for dates in std_msn_forecast; do
+    for var in tas mslp pr; do
+      for f in f1 f2 f3 f4; do
+        for horizon in 19 26; do
+          python src/models/perpp_msn/batch_predict.py era5-${f}_${var} ${horizon} -t ${dates} -y all -m None
+        done
+      done
+    done
+  done
+
+Positional args:
+  gt_id: era5-tas, era5-pr, era5-mslp, etc.
+  horizon: 19 or 26
+
+Named args:
+  --target_dates (-t): target dates for batch prediction 
+  --train_years (-y): number of years to use in training ("all" or integer)
+  --margin_in_days (-m): number of month-day combinations on either side of the target combination to include when training
+    Set to 0 to include only target month-day combo
+    Set to "None" to include entire year
+  --date_order_seed (-s): if None, sort target_dates in order (as usual), otherwise randomize order of target_dates
+'''
 
 import os
 from utils.notebook import isnotebook
@@ -53,17 +63,14 @@ else:
 import numpy as np
 import pandas as pd
 import xarray as xr
-from sklearn import linear_model
 from datetime import datetime, timedelta
 from functools import partial
 from multiprocessing import Pool
-from models.utils.data_utils import get_measurement_variable, df_merge, shift_df
+from models.utils.data_utils import get_measurement_variable
 from models.utils.general_util import printf, tic, toc
-from models.utils.experiments_util import (month_day_subset, get_start_delta, clim_merge, get_forecast_delta,
-                                              get_forecast_variable, get_forecast_delta)
-from models.utils.eval_util import get_target_dates, mean_rmse_to_score, save_metric
-from models.utils.models_util import (get_submodel_name, get_forecast_filename,
-                                         save_forecasts)
+from models.utils.experiments_util import (get_start_delta, get_forecast_delta, get_forecast_delta)
+from models.utils.eval_util import get_target_dates
+from models.utils.models_util import get_submodel_name
 from utils.data_io import load_data, save_to_netcdf
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -78,7 +85,7 @@ if not isnotebook():
     # If notebook run as a script, parse command-line arguments
     parser = ArgumentParser()
     parser.add_argument("pos_vars", nargs="*")  # gt_id and horizon
-    parser.add_argument('--target_dates', '-t', default="std_sheerwater_eval")
+    parser.add_argument('--target_dates', '-t', default="std_aifs_forecast")
     parser.add_argument('--train_years', '-y', default="all",
                         help='number of years to use in debiasing ("all" or integer)')
     parser.add_argument('--margin_in_days', '-m', default="None",
@@ -108,7 +115,7 @@ else:
     # Otherwise, specify arguments interactively
     gt_id = "era5-f1_tas"
     horizon = "26"
-    target_dates = "std_test" 
+    target_dates = "std_msn_forecast" 
     train_years = "all"
     margin_in_days = None
     date_order_seed = None

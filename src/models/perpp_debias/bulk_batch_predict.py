@@ -51,6 +51,20 @@ Example usages: (exclude -p to run batch_predict.py)
       done
     done
   done 
+  for var in tas pr; do
+    for f in F90 F10 F95 F5; do
+      for horizon in 19 26; do
+        python src/models/perpp_debias/bulk_batch_predict.py era5-${f}_${var} $horizon -t std_test -c "src/batch/batch_python.sh -m 60 -c 10 -h 2"
+      done
+    done
+  done
+  for var in mslp; do
+    for f in F90 F10 F95 F5; do
+      for horizon in 19 26; do
+        python src/models/perpp_debias/bulk_batch_predict.py era5-${f}_${var} $horizon -t std_test -c "src/batch/batch_python.sh -m 100 -c 13 -h 2"
+      done
+    done
+  done
 
 Positional args:
   gt_id: e.g., era5-f1_tas, era5-f1_pr, era5-f1_mslp, etc.

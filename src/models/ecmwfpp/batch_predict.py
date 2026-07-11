@@ -9,9 +9,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: aiwqd
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -22,6 +22,7 @@ Predicts outcomes using ECMWF++
 
 Example usages:
   python src/models/ecmwfpp/batch_predict.py era5-f3_tas 19 -t std_test -i True -y 20 -m 35 -d 1 -fl 19 -ll 26
+  python src/models/ecmwfpp/batch_predict.py era5-F5_pr 19 -t std_test -i True -y 20 -m 35 -d 1 -fl 19 -ll 26
   # Use -o to overwrite existing predictions
   for var in tas pr mslp; do
     for f in f1 f2 f3 f4; do
@@ -31,8 +32,16 @@ Example usages:
     done
   done    
 
+  for var in tas pr mslp; do
+    for F in F5 F10 F90 F95; do
+      for horizon in 19 26; do
+        src/batch/batch_python.sh -m 15 -c 1 src/models/ecmwfpp/batch_predict.py era5-${F}_${var} ${horizon} -t std_test -i True -y 20 -d 4 -m 35 -fl ${horizon} -ll ${horizon}
+      done
+    done
+  done    
+
 Positional args:
-  gt_id: e.g., era5-tas, era5-pr, era5-mslp
+  gt_id: e.g., era5-f1_tas, era5-f1_pr, era5-f1_mslp, era5-F10_pr, era5-F90_pr
   horizon: 19 or 26
 
 Named args:
@@ -132,7 +141,7 @@ if not isnotebook():
     overwrite = args.overwrite
 else:
     # Otherwise, specify arguments interactively 
-    gt_id = "era5-f4_tas" 
+    gt_id = "era5-F10_pr" 
     horizon = "19" 
     target_dates = 'std_tune'
     fit_intercept = True    
@@ -436,3 +445,5 @@ for target_date_obj in sorted(valid_targets):
         print("-mean wtd_mse: {}".format(wtd_mse_sum/wtd_mse_count))
         #toc()
     toc()
+
+# %%

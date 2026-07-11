@@ -31,9 +31,20 @@ Example usages:
   done
   done
 
+  python src/models/climatology/batch_predict.py era5-F10_tas 19 -t std_test
+  for dates in std_test; do
+  for var in tas pr mslp; do
+    for f in F5 F95 F10 F90; do
+      for horizon in 19 26; do
+        src/batch/batch_python.sh -m 1 -c 1 -h 1 src/models/climatology/batch_predict.py era5-${f}_$var $horizon -t $dates
+      done
+    done
+  done
+  done
+
 
 Positional args:
-  gt_id: e.g. era5-f1_tas, era5-f2_tas
+  gt_id: e.g. era5-f1_tas, era5-F95_tas
   horizon: 19 or 26
 
 Named args:
@@ -94,11 +105,15 @@ else:
 Process model parameters
 """
 task = f'{gt_id}_{horizon}'
-measurement_variable = get_measurement_variable(gt_id) # e.g. "f1_tas"
+measurement_variable = get_measurement_variable(gt_id) # e.g. "f1_tas" or "F95_pr"
 if measurement_variable.startswith("f"):
-    quintile = int(measurement_variable.split("_")[0].replace("f", "")) # 1, 2, 3, or 4
+    # Compute quantile from quintile number
+    quantile = int(measurement_variable.split("_")[0].replace("f", "")) / 5.0 
+elif measurement_variable.startswith("F"):
+    # Compute quantile from percentile
+    quantile = int(measurement_variable.split("_")[0].replace("F", "")) / 100.0
 else: 
-     raise ValueError(f"Measurement variable has no quintile {measurement_variable}")
+     raise ValueError(f"Measurement variable {measurement_variable} has no quintile or percentile")
 
 # Get list of target date objects
 target_date_objs = pd.Series(get_target_dates(date_str=target_dates, horizon=horizon))
@@ -106,14 +121,17 @@ target_date_objs = pd.Series(get_target_dates(date_str=target_dates, horizon=hor
 # Set submodel name as "climatology" since there are not hyperparameters
 submodel_name = "climatology"
 
-# Construct empty preds dataset to fill in for each target date
+# Construct preds dataset to fill in for each target date
+# Prediction = quantile value for all locations
 lats = np.arange(-90, 91.5, 1.5)
 lons = np.arange(0, 360, 1.5)
 preds_template = xr.DataArray(
-    np.full((len(lats), len(lons)), np.nan),
+    np.full((len(lats), len(lons)), quantile),
     dims=["latitude", "longitude"],
     coords={"latitude": lats, "longitude": lons}
 )
+# Convert from DataArray to Dataset
+preds_template = preds_template.to_dataset(name=measurement_variable)
 
 
 # %%
@@ -135,12 +153,5 @@ for target_date_obj in target_date_objs:
         continue
     else:
         printf(f"Getting climatology forecast for target {target_date_str}")
-        # Prediction = k/5 for the kth quintile at all coordinates
-        preds_i = preds_template.copy(deep=True)
-        preds_i[:] = quintile / 5.0
-        # Add time dimension
-        preds_i = preds_i.expand_dims(time=[target_date_obj])
-        # Convert from DataArray to Dataset
-        preds_i = preds_i.to_dataset(name=measurement_variable)
-        # Save prediction to file
-        save_to_netcdf(preds_i, preds_f)
+        # Add time dimension and save prediction to file
+        save_to_netcdf(preds_template.expand_dims(time=[target_date_obj]), preds_f)

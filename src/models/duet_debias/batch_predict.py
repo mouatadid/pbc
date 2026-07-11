@@ -8,7 +8,7 @@ Example usage:
   for var in pr tas mslp; do
     for f in {1..4}; do
       for horizon in 19 26; do
-        python src/models/duet_debias/batch_predict.py "era5-f${f}_$var" "$horizon" -t ${dates} -o
+        python src/models/duet_debias/batch_predict.py "era5-f${f}_$var" "$horizon" -t ${dates} 
       done
     done
   done
@@ -18,7 +18,7 @@ Example usage:
   for var in pr tas mslp; do
     for f in {1..4}; do
       for horizon in 19 26; do
-        src/batch/batch_python.sh -m 1 --cores 1 --hours 1 src/models/duet_debias/batch_predict.py "era5-f${f}_$var" "$horizon" -t ${dates} -o
+        src/batch/batch_python.sh -m 1 --cores 1 --hours 1 src/models/duet_debias/batch_predict.py "era5-f${f}_$var" "$horizon" -t ${dates} 
       done
     done
   done

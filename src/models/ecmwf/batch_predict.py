@@ -1,11 +1,14 @@
 """
 Predicts outcomes using raw (undebiased) ecmwf ensemble forecast
 
-Example usage:
+Example usages:
   python src/models/ecmwf/batch_predict.py era5-f1_tas 26 -t std_future -fl 26 -ll 26
+  python src/models/ecmwf/batch_predict.py era5-f1_tas 19 -t std_msn_forecast -fl 19 -ll 19
+  python src/models/ecmwf/batch_predict.py era5-F95_pr 19 -t std_tune -fl 19 -ll 19
+  python src/models/ecmwf/batch_predict.py era5-F95_pr 26 -t std_tune -fl 26 -ll 26
 
 Positional args:
-  gt_id: e.g., era5-f1_tas
+  gt_id: e.g., era5-f1_tas, era5-F10_tas
   horizon: 19 or 26
 
 Named args:

@@ -7,9 +7,10 @@ GDACS provides event-level flood data (not individual satellite tiles), so
 queries return in seconds.  Uses only the Python standard library + no auth.
 
 Usage:
-    python download-flood-events.py \\
-        --start 2022-01-01 --end 2026-12-31 \\
-        --out-json eval/viz/extreme-brier-barplot-floods/data/flood-events-gdacs.json
+  python src/viz/extreme/download-flood-events.py --start 2022-01-01 --end 2026-12-31 --out-json eval/viz/bss-barplot-floods/data/flood-events-gdacs.json
+  python src/viz/extreme/download-flood-events.py --start 2016-01-01 --end 2026-12-31 --alert-levels 'Orange;Red' --out-json eval/viz/bss-barplot-floods/data/flood-events-gdacs-2016_2026-Orange_Red.json
+  python src/viz/extreme/download-flood-events.py --start 2016-01-01 --end 2026-12-31 --alert-levels 'Red' --out-json eval/viz/bss-barplot-floods/data/flood-events-gdacs-2016_2026-Red.json
+  python src/viz/extreme/download-flood-events.py --start 2016-01-01 --end 2026-12-31 --out-json eval/viz/bss-barplot-floods/data/flood-events-gdacs-2016_2026.json
 """
 
 from __future__ import annotations
@@ -196,6 +197,8 @@ def features_to_events(
             "date": date_str,
             "lat": (round(lat_lo, 1), round(lat_hi, 1)),
             "lon": (round(lon_lo, 1), round(lon_hi, 1)),
+            # Standardize alert level to title case (e.g. "Red", "Orange", "Green")
+            "alertlevel": props.get("alertlevel", "").title(),
         }
 
     return events
@@ -209,7 +212,7 @@ def features_to_events(
 def save_json(events: Dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     serialisable = {
-        k: {"date": v["date"], "lat": list(v["lat"]), "lon": list(v["lon"])}
+        k: {"date": v["date"], "lat": list(v["lat"]), "lon": list(v["lon"]), "alertlevel": v.get("alertlevel", "")}
         for k, v in events.items()
     }
     with open(path, "w") as fh:
@@ -225,7 +228,7 @@ def load_existing_events(path: Path) -> Dict:
     with open(path) as fh:
         data = json.load(fh)
     return {
-        k: {"date": v["date"], "lat": tuple(v["lat"]), "lon": tuple(v["lon"])}
+        k: {"date": v["date"], "lat": tuple(v["lat"]), "lon": tuple(v["lon"]), "alertlevel": v.get("alertlevel", "")}
         for k, v in data.items()
     }
 
@@ -239,7 +242,8 @@ def print_python_literal(events: Dict) -> None:
             f'    "{slug}":'
             f' {{"date": "{info["date"]}",'
             f' "lat": ({lat[0]}, {lat[1]}),'
-            f' "lon": ({lon[0]}, {lon[1]})}},',
+            f' "lon": ({lon[0]}, {lon[1]}),'
+            f' "alertlevel": "{info.get("alertlevel", "")}"}},',
         )
     print("}")
 

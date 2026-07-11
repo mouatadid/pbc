@@ -9,9 +9,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: aiwqd
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -24,9 +24,10 @@
 #
 # Example usage:
 #   python src/models/perpp_ecmwf/batch_predict.py era5-f1_tas 19 -t std_test -y all -m None 
+#   python src/models/perpp_ecmwf/batch_predict.py era5-F95_pr 19 -t std_test -y all -m None 
 #
 # Positional args:
-#   gt_id: era5-f1_tas, era5-f1_pr, era5-f1_mslp, etc.
+#   gt_id: era5-f1_tas, era5-f1_pr, era5-f1_mslp, era5-F10_tas, era5-F90_pr, era5-F95_mslp, etc.
 #   horizon: 19 or 26
 #
 # Named args:
@@ -103,7 +104,7 @@ if not isnotebook():
         date_order_seed = int(args.date_order_seed)
 else:
     # Otherwise, specify arguments interactively
-    gt_id = "era5-f1_tas"
+    gt_id = "era5-F10_tas"
     horizon = "19"
     target_dates = "std_future" 
     train_years = "all"
@@ -218,7 +219,7 @@ for shift in shifts:
 #
 if clim_col in pred_cols:
     printf(f"Adding {clim_years}-year rolling climatology with {clim_margin}-day margin")
-    # Check if measurement_variable is probabilistic (fk_*) target
+    # Check if measurement_variable is probabilistic quintile (fk_*) target
     match = re.match(r"f(\d+)", measurement_variable)
     if match:
         # For probabilistic (fk_*) targets, pad ground truth with clim_years-1 years of default values,
@@ -235,8 +236,25 @@ if clim_col in pred_cols:
         rolling_clim = gt_ds.reindex(time=new_time_index, fill_value=fill_value)  
         toc()
     else:
-        # Otherwise, use ground truth data without padding
-        rolling_clim = gt_ds
+        # Check if measurement_variable is a probabilistic percentile (Fp_*) target
+        match = re.match(r"F(\d+)", measurement_variable)
+        if match:
+            # For probabilistic (Fp_*) targets, pad ground truth with clim_years-1 years of default values,
+            # where default value is p / 100. (the nominal value of the p-th percentile bin)
+            fill_value = int(match.group(1)) / 100.0
+            printf(f"Padding ground truth with {clim_years-1} years of default value {fill_value} for rolling climatology")
+            tic()
+            time_index = gt_ds.time.get_index('time')
+            # Start on January 1st of the year clim_years-1 years before the first time in the dataset
+            first_time = time_index[0]
+            first_time = first_time.replace(year=first_time.year - (clim_years - 1), day=1, month=1)
+            last_time = time_index[-1]
+            new_time_index = pd.date_range(start=first_time, end=last_time, freq='D')
+            rolling_clim = gt_ds.reindex(time=new_time_index, fill_value=fill_value)  
+            toc()
+        else:
+            # Otherwise, use ground truth data without padding
+            rolling_clim = gt_ds
     # Ignore leap days
     printf(f"Dropping leap days")
     tic()
@@ -610,3 +628,5 @@ else:
         save_to_netcdf(preds_i, Path(preds_f))
         toc()
 
+
+# %%

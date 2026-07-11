@@ -2,6 +2,7 @@
 
 Example usages:
   python src/models/ecmwf/bulk_batch_predict.py era5-f1_tas 19 -t std_test -c "src/batch/batch_python.sh --memory 10 --cores 1 --hours 1"
+  python src/models/ecmwf/bulk_batch_predict.py era5-F10_tas 19 -t std_test -c "src/batch/batch_python.sh --memory 10 --cores 1 --hours 1"
   for dates in std_test std_future; do
   for f in {1..4}; do
     for var in pr tas mslp; do
@@ -11,9 +12,18 @@ Example usages:
     done
   done
   done
+  for dates in std_test std_future; do
+  for f in "F5" "F10" "F90" "F95"; do
+    for var in pr tas mslp; do
+      for horizon in 19 26; do
+        python src/models/ecmwf/bulk_batch_predict.py era5-f${f}_${var} ${horizon} -t ${dates} -c "src/batch/batch_python.sh --memory 15 --cores 1 --hours 1"
+      done
+    done
+  done
+  done
       
 Positional args:
-  gt_id: e.g., era5-f1_tas
+  gt_id: e.g., era5-f1_tas, era5-F10_tas
   horizon: e.g., 19 or 26
 
 Named args:

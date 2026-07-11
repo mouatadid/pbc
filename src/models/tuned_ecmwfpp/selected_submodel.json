@@ -118,5 +118,101 @@
   "f4_mslp_26": {
     "num_years": 3,
     "margin_in_days": "None"
+  },
+  "F5_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F5_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F5_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F5_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F5_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F5_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F95_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F95_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F95_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F95_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F95_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F95_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F10_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F10_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F10_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F10_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F10_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F10_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F90_tas_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F90_tas_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F90_pr_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F90_pr_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F90_mslp_19": {
+    "num_years": 3,
+    "margin_in_days": "None"
+  },
+  "F90_mslp_26": {
+    "num_years": 3,
+    "margin_in_days": "None"
   }
 }

@@ -45,8 +45,18 @@ Example usage: (exclude -p to run batch_predict.py)
   done
   done
 
+  for dates in std_test; do
+  for var in pr; do
+    for F in 5 95 10 90; do
+      for horizon in 19 26; do
+        python src/models/pbc_debias/bulk_batch_predict.py era5-F${F}_${var} ${horizon} -t ${dates} -o -c "src/batch/batch_python.sh -m 1 -c 1 -h 12"
+      done
+    done
+  done
+  done
+
 Positional args:
-  gt_id: e.g., era5-f1_tas, era5-f1_pr, era5-f1_mslp, etc.
+  gt_id: e.g., era5-f1_tas, era5-f1_pr, era5-f1_mslp, era5-F10_tas, era5-F5_pr, era5-F95_mslp
   horizon: e.g., 19 or 26
 
 Named args:
@@ -75,9 +85,7 @@ else:
 # Imports
 import subprocess
 from pkg_resources import resource_filename
-from models.utils.general_util import printf, tic, toc
-from models.utils.models_util import get_submodel_name
-from models.utils.eval_util import get_named_targets
+from models.utils.general_util import printf
 
 # %%
 if not isnotebook():

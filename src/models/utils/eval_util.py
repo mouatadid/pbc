@@ -7,6 +7,7 @@ from .general_util import string_to_dt
 from .experiments_util import pandas2hdf
 from datetime import datetime
 import calendar
+import xarray as xr
 
 
 def mean_rmse_to_score(mean_rmse):

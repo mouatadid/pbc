@@ -178,5 +178,149 @@
     "margin_in_days": "None",
     "equal": true,
     "simplex": false
+},
+  "F5_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F5_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F5_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F5_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F5_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F5_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+ },
+  "F95_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F95_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F95_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F95_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F95_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F95_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F10_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F10_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F10_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F10_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F10_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F10_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+"F90_tas_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F90_tas_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F90_pr_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F90_pr_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F90_mslp_19": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
+},
+  "F90_mslp_26": {
+    "train_years": "all",
+    "margin_in_days": "None",
+    "equal": true,
+    "simplex": false
   }
 }

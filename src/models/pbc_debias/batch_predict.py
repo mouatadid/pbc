@@ -33,7 +33,7 @@ Example usages:
   done
 
 Positional args:
-  gt_id: era5-tas, era5-pr, era5-mslp, etc.
+  gt_id: era5-f1_tas, era5-f2_pr, era5-f3_mslp, era5-F10_tas, era5-F5_pr, era5-F95_mslp, etc.
   horizon: 19 or 26
 
 Named args:
@@ -60,7 +60,6 @@ else:
 import numpy as np
 import pandas as pd
 import xarray as xr
-from sklearn import *
 import sys
 from datetime import datetime, timedelta
 from functools import partial
@@ -70,6 +69,7 @@ from models.utils.general_util import printf
 from models.utils.eval_util import get_target_dates
 from models.utils.data_utils import get_measurement_variable
 from models.utils.experiments_util import get_start_delta
+from models.utils.models_util import get_selected_submodel_name
 from utils.timing import tic, toc
 from utils.data_io import load_data, save_to_netcdf
 from models.pbc_debias.attributes import get_submodel_name
@@ -147,9 +147,24 @@ measurement_variable = get_measurement_variable(gt_id)
 model_name = f'pbc_{forecast}'
 
 # Get list of ensemble member model names
-pp_name = f'proj_tuned_ecmwfpp'
-perpp_name = 'proj_perpp_' + forecast
+if gt_id.startswith("era5-f"):
+    pp_name = f'proj_tuned_ecmwfpp'
+    perpp_name = 'proj_perpp_' + forecast
+elif gt_id.startswith("era5-F"):
+    pp_name = f'tuned_ecmwfpp'
+    perpp_name = 'perpp_' + forecast
+else:
+    raise ValueError(f"Unsupported gt_id {gt_id}")
 ensemble_members = [pp_name, perpp_name]
+
+# Get selected submodel names for each ensemble member
+submodel_names = []
+printf("Ensemble members:")
+for model in ensemble_members:
+    sn = get_selected_submodel_name(model=model, gt_id=gt_id, horizon=horizon, 
+                                   target_dates=target_dates)
+    printf(f"\t{model}: {sn}")
+    submodel_names.append(sn)
 
 # Specify regression parameters
 gt_col = measurement_variable
@@ -193,8 +208,7 @@ if equal:
             file_template = os.path.join("models", "{}", "submodel_forecasts", "{}", task, f"{task}-{target_date_str}.nc")
             members_exist = True
             for i, model in enumerate(ensemble_members):
-                sn = f'{model}-yearsall_marginNone_clim20' if model.startswith('proj_perpp_') else f'{model}_on_years3_marginNone'
-                model_filename = file_template.format(model, sn)
+                model_filename = file_template.format(model, submodel_names[i])
                 if not os.path.exists(model_filename):
                     printf(f'{model} is missing forecasts for {target_date_str}; skipping')
                     members_exist = False
@@ -251,8 +265,8 @@ gt_ds = gt_ds.dropna(dim="latitude", how="all")
 print("Finding dates with forecasts from all models")
 tic()
 available_dates = set(gt_ds.time.dt.strftime('%Y%m%d').values)
-for model in ensemble_members: 
-    sn = f'{model}-yearsall_marginNone_clim20' if model.startswith('proj_perpp_') else f'{model}_on_years3_marginNone'
+for i, model in enumerate(ensemble_members): 
+    sn = submodel_names[i]
     model_dir = os.path.join('models', model, 'submodel_forecasts', sn, task)
     model_dates = set()
     if os.path.exists(model_dir): 
@@ -271,10 +285,10 @@ toc()
 # Load in model forecasts
 #
 lld_data = gt_ds
-for model in ensemble_members: 
+for i, model in enumerate(ensemble_members): 
     print(f"Loading forecasts for {model}")
     tic()
-    sn = f'{model}-yearsall_marginNone_clim20' if model.startswith('proj_perpp_') else f'{model}_on_years3_marginNone'
+    sn = submodel_names[i]
     filenames = [os.path.join('models', model, 'submodel_forecasts', sn, task, f'{task}-{target_date_str}.nc') for target_date_str in available_dates]
     forecast_ds = xr.open_mfdataset(filenames)
     forecast_ds.load() # Load forecasts into memory

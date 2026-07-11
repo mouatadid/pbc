@@ -7,9 +7,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: aiwqd
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -44,9 +44,16 @@ Example usages: (exclude -p to run batch_predict.py)
       done
     done
   done 
+  for var in pr tas mslp; do
+    for f in F5 F10 F90 F95; do
+      for horizon in 19 26; do
+        python src/models/perpp_ecmwf/bulk_batch_predict.py era5-${f}_${var} $horizon -t std_test -c "src/batch/batch_python.sh -m 50 -c 14"
+      done
+    done
+  done
 
 Positional args:
-  gt_id: e.g., era5-f1_tas, era5-f1_pr, era5-f1_mslp, etc.
+  gt_id: e.g., era5-f1_tas, era5-f1_pr, era5-f1_mslp, era5-F5_tas, era5-F95_pr, era5-F10_mslp, etc.
   horizon: e.g., 19 or 26
 
 Named args:
@@ -142,3 +149,5 @@ for i, param_str in enumerate(param_strs):
         sleep_time = 0 #.1
         print(f"Sleeping for {sleep_time} seconds")
         time.sleep(sleep_time)
+
+# %%

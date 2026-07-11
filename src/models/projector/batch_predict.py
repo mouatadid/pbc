@@ -19,6 +19,7 @@
 Projector: For a given model and submodel, project the predicted f1-4 probabilities onto the valid CDF space.
 
 Example usages: 
+  python src/models/projector/batch_predict.py era5-tas 19 -mn tuned_ecmwfpp -t std_future
   python src/models/projector/batch_predict.py era5-tas 19 -mn perpp_msn -t std_future
   python src/models/projector/batch_predict.py era5-tas 19 -mn tuned_msnpp -t std_future
   python src/models/projector/batch_predict.py era5-tas 19 -mn perpp_ecmwf -sn perpp_ecmwf-yearsall_marginNone_clim20 -t std_future

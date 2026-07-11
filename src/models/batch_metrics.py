@@ -7,9 +7,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: aiwqd
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -25,6 +25,8 @@ python src/models/batch_metrics.py era5-f1_tas 19 -mn proj_tuned_ecmwfpp -sn pro
 python src/models/batch_metrics.py era5-f3_tas 26 -mn ecmwf -sn ecmwfpp-debiasFalse_years20_margin0_days1_leads26-26_lossmse -t std_tune -m wtd_mse
 python src/models/batch_metrics.py era5-f1_tas 26 -mn pbc_ecmwf -sn pbc_ecmwf-yearsall_marginNone_equal -t std_test -m lat_lon_mse
 src/batch/batch_python.sh -m 1 --cores 1 --hours 1 src/models/batch_metrics.py era5-f1_tas 26 -mn pbc_ecmwf -sn pbc_ecmwf-yearsall_marginNone_equal -t std_test -m wtd_mse 
+python src/models/batch_metrics.py era5-F10_tas 26 -mn pbc_ecmwf -sn pbc_ecmwf-yearsall_marginNone_equal -t std_test -m lat_lon_mse
+src/batch/batch_python.sh -m 1 --cores 1 --hours 1 src/models/batch_metrics.py era5-F10_tas 26 -mn pbc_ecmwf -sn pbc_ecmwf-yearsall_marginNone_equal -t std_test -m wtd_mse 
 
 for dates in std_test 2024; do
 for var in tas mslp pr; do
@@ -107,8 +109,22 @@ for var in tas pr mslp; do
   done
 done
 
+for var in pr tas mslp; do
+  for f in "F5" "F10" "F90" "F95"; do
+    for horizon in "19" "26"; do
+      gt_id="era5-${f}_${var}"
+      src/batch/batch_python.sh -m 10 --cores 1 --hours 1 src/models/batch_metrics.py "$gt_id" "$horizon" -mn climatology -t std_test -m wtd_mse lat_lon_mse
+      src/batch/batch_python.sh -m 10 --cores 1 --hours 1 src/models/batch_metrics.py "$gt_id" "$horizon" -mn pbc_ecmwf -t std_test -m wtd_mse lat_lon_mse
+      src/batch/batch_python.sh -m 10 --cores 1 --hours 1 src/models/batch_metrics.py "$gt_id" "$horizon" -mn pbc_debias -t std_test -m wtd_mse lat_lon_mse
+      src/batch/batch_python.sh -m 10 --cores 1 --hours 1 src/models/batch_metrics.py "$gt_id" "$horizon" -mn perpp_ecmwf -t std_test -m wtd_mse lat_lon_mse
+      src/batch/batch_python.sh -m 10 --cores 1 --hours 1 src/models/batch_metrics.py "$gt_id" "$horizon" -mn perpp_debias -t std_test -m wtd_mse lat_lon_mse
+      src/batch/batch_python.sh -m 10 --cores 1 --hours 1 src/models/batch_metrics.py "$gt_id" "$horizon" -mn tuned_ecmwfpp -t std_test -m wtd_mse lat_lon_mse
+    done
+  done
+done
+
 Positional args: 
-gt_id: e.g. era5-tas, era5-pr, era5-f1_tas 
+gt_id: e.g. era5-tas, era5-pr, era5-f1_tas, era5-F10_tas 
 horizon: 19 or 26
 
 Named args: 
@@ -205,13 +221,13 @@ if __name__ == "__main__":
         submodel_name = args.submodel_name  
     else:
         # Otherwise, specify arguments interactively
-        gt_id = "era5-f2_pr"
+        gt_id = "era5-F5_pr"
         horizon = "19"
         target_dates = "std_test" 
-        metrics = ['lat_lon_mse']
+        metrics = ['wtd_mse']
         region = None
-        model_name = "pbc_ecmwf" 
-        submodel_name = "pbc_ecmwf-yearsall_marginNone_equal"  
+        model_name = "perpp_ecmwf" 
+        submodel_name = "perpp_ecmwf-yearsall_marginNone_clim20"  
 
     """ 
     Process model parameters
@@ -345,7 +361,7 @@ if __name__ == "__main__":
                 preds = xr.open_dataset(file_path)[measurement_variable].squeeze()
             # Suppress error messages when removing the lock file
             subprocess.call(f"rm {file_path}lock", shell=True, stderr=subprocess.DEVNULL)
-     
+
         if len(preds) == 0:
             printf(f"There are no predictions in {file_path}; skipping")
             continue
@@ -535,3 +551,9 @@ if __name__ == "__main__":
             ds = df.to_frame().to_xarray()
             save_to_zarr(ds, Path(metric_file_path))
             toc()
+
+# %%
+
+# %%
+
+# %%

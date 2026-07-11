@@ -12,7 +12,7 @@ def get_selected_submodel_name(gt_id, target_horizon):
     """Returns the name of the selected submodel for this model and given task
 
     Args:
-      gt_id: string measurement variable, e.g. "f1_tas", "f1_pr", "f1_mslp"
+      gt_id: string measurement variable, e.g. "f1_tas", "f1_pr", "f1_mslp" or "F5_tas", "F95_pr", "F10_mslp", "F90_mslp"
       target_horizon: string in {"19", "26"}
     """
     # Read in selected model parameters for given task

@@ -19,9 +19,9 @@
 Predicts outcomes using MSN ensemble forecast
 
 Example usages:
-  python src/models/msn/batch_predict.py era5-f1_tas 19 -t std_test
+  python src/models/msn/batch_predict.py era5-f1_tas 19 -t std_msn_forecast
 
-  for dates in std_future; do
+  for dates in std_msn_forecast; do
   for var in tas mslp pr; do
     for f in f1 f2 f3 f4; do
       for horizon in 19 26; do
@@ -36,7 +36,7 @@ Positional args:
   horizon: 19 or 26
 
 Named args:
-  --target_dates (-t): target dates for batch prediction (default: std_test)
+  --target_dates (-t): target dates for batch prediction (default: std_msn_forecast)
 """
 
 # %%
@@ -73,7 +73,7 @@ if not isnotebook():
     # If notebook run as a script, parse command-line arguments
     parser = ArgumentParser()
     parser.add_argument("pos_vars",nargs="*")  # gt_id and horizon                                                                                  
-    parser.add_argument('--target_dates', '-t', default="std_test")
+    parser.add_argument('--target_dates', '-t', default="std_msn_forecast")
     args, opt = parser.parse_known_args()
 
     # Assign variables                                                                                                                          
@@ -84,7 +84,7 @@ else:
     # Otherwise, specify arguments interactively 
     gt_id =  "era5-f1_mslp"
     horizon = "19"
-    target_dates = "std_test"
+    target_dates = "std_msn_forecast"
 
 # %%
 if gt_id.endswith("pr"): 

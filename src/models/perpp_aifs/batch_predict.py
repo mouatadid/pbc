@@ -86,7 +86,7 @@ if not isnotebook():
     # If notebook run as a script, parse command-line arguments
     parser = ArgumentParser()
     parser.add_argument("pos_vars", nargs="*")  # gt_id and horizon
-    parser.add_argument('--target_dates', '-t', default="std_sheerwater_eval")
+    parser.add_argument('--target_dates', '-t', default="std_aifs_forecast")
     parser.add_argument('--train_years', '-y', default="all",
                         help='number of years to use in debiasing ("all" or integer)')
     parser.add_argument('--margin_in_days', '-m', default="None",

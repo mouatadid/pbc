@@ -7,9 +7,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: aiwqd
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -21,6 +21,7 @@ used by the tuner
 
 Example usage: (include -p to preview commands without running batch_predict.py)
   python src/models/ecmwfpp/bulk_batch_predict.py era5-f4_mslp 19 -t std_tune -c "src/batch/batch_python.sh -m 15 -c 1"
+  python src/models/ecmwfpp/bulk_batch_predict.py era5-F10_mslp 19 -t std_tune -c "src/batch/batch_python.sh -m 15 -c 1"
 
 Example usages: (include -o to overwrite existing predictions, -wm to generate metrics after predictions)
   for var in tas pr; do
@@ -37,6 +38,20 @@ Example usages: (include -o to overwrite existing predictions, -wm to generate m
         done
     done
   done
+  for var in tas pr; do
+    for horizon in 19 26; do
+        for F in F5 F10 F90 F95; do
+            python src/models/ecmwfpp/bulk_batch_predict.py era5-${F}_${var} $horizon -t std_tune -c "src/batch/batch_python.sh -m 15 -c 1" -wm -o
+        done
+    done
+  done
+  for var in mslp; do
+    for horizon in 19 26; do
+        for F in F5 F10 F90 F95; do
+            python src/models/ecmwfpp/bulk_batch_predict.py era5-${F}_${var} $horizon -t std_tune -c "src/batch/batch_python.sh -m 20 -c 1" -wm -o
+        done
+    done
+  done
   # Use -mo to generate metrics only
   for var in pr tas mslp; do
     for horizon in 19 26; do
@@ -47,7 +62,7 @@ Example usages: (include -o to overwrite existing predictions, -wm to generate m
   done
 
 Positional args:
-  gt_id: era5-tas, era5-pr, era5-mslp, etc.
+  gt_id: era5-f1_tas, era5-f1_pr, era5-f1_mslp, era5-F5_tas, era5-F10_tas, era5-F90_tas etc.
   horizon: 19 or 26
 
 Named args:
@@ -120,12 +135,12 @@ if not isnotebook():
     skip_existing = args.skip_existing
 else:
     # Otherwise, specify arguments interactively
-    gt_id = "era5-f1_tas"
+    gt_id = "era5-F10_pr"
     horizon = "19"
     target_dates = "std_tune" 
-    cmd_prefix = 'python'
+    cmd_prefix = 'batch_python.sh' #'python'
     metrics_only = False
-    with_metrics = False
+    with_metrics = True
     preview = True
     overwrite = False
     skip_existing = False
@@ -179,7 +194,7 @@ if overwrite:
     task_str += " --overwrite"
 
 # Set parameters for generating metrics files
-metrics_prefix = cmd_prefix if metrics_only else "src/batch/batch_python.sh -m 10 -c 1"
+metrics_prefix = cmd_prefix if metrics_only else "src/batch/batch_python.sh -m 10 -c 1 -h 2"
 metrics_script = os.path.join('src', 'models', "batch_metrics.py")
 metrics = "wtd_mse"
 metrics_suffix = '_mo' if metrics_only else ''
@@ -289,3 +304,5 @@ if with_metrics and metrics_ids:
     metrics_ids_string = ":".join(metrics_ids)
     print(f"METRICS_JOB_IDS:{metrics_ids_string}")
 
+
+# %%
