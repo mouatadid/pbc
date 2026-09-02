@@ -39,6 +39,8 @@ EXTREMES_OUT_DIR = os.path.join("viz", "pbc", "extremes")
 make_directories(EXTREMES_OUT_DIR)
 BIAS_OUT_DIR = os.path.join("viz", "pbc", "bias")
 make_directories(BIAS_OUT_DIR)
+SRC_DATA_DIR = os.path.join(OUT_DIR, "source_data")
+make_directories(SRC_DATA_DIR)
 
 #
 # Dictionaries mapping all model names and tasks to their display names
@@ -600,236 +602,6 @@ def get_seasonal_rpss(model_names=['ecmwf', 'pbc_ecmwf', 'climatology'],
     return all_seasonal_rpss
 
        
-def plot_rpss_boxplot(all_seasonal_rpss,
-                           model_names=None,
-                           target_dates='std_test',
-                           font_scale = 1,
-                           show_fig=True,
-                           save_fig=True):
-
-    if model_names is None:
-        model_names = ['ecmwf', 'pbc_ecmwf']
-
-    def get_values(ds, var):
-        return ds[var].values
-
-    
-    def build_week_dict(dataset_key):
-        return {
-            all_model_names[m]: get_values(all_seasonal_rpss[dataset_key], m)
-            for m in model_names
-        }
-
-    data = {
-        "Temperature": {
-            "Week 3": build_week_dict("era5-tas_19"),
-            "Week 4": build_week_dict("era5-tas_26"),
-        },
-        "Precipitation": {
-            "Week 3": build_week_dict("era5-pr_19"),
-            "Week 4": build_week_dict("era5-pr_26"),
-        },
-        "Sea Level Pressure": {
-            "Week 3": build_week_dict("era5-mslp_19"),
-            "Week 4": build_week_dict("era5-mslp_26"),
-        },
-    }
-
-    n_models = len(model_names)
-
-    # --- Plot ---
-    fig, axes = plt.subplots(1, 3, figsize=(18, 4), sharey=False)
-
-    for ax, (title, weeks) in zip(axes, data.items()):
-
-        # dynamic positions
-        week3_positions = np.arange(1, n_models + 1)
-        gap = 1
-        week4_positions = week3_positions + n_models + gap
-        positions = np.concatenate([week3_positions, week4_positions])
-
-        # collect box data dynamically
-        box_data = (
-            [weeks["Week 3"][all_model_names[m]] for m in model_names] +
-            [weeks["Week 4"][all_model_names[m]] for m in model_names]
-        )
-
-        bp = ax.boxplot(
-            box_data,
-            positions=positions,
-            widths=0.7,
-            patch_artist=True,
-            showfliers=True,
-        )
-
-        # color boxes dynamically
-        color_keys = model_names * 2
-        for patch, key in zip(bp["boxes"], color_keys):
-            patch.set_facecolor(model_colors[key])
-            patch.set_alpha(0.85)
-
-        ax.set_title(title, fontsize=16*font_scale, pad=15)#, fontweight='bold')
-        if ax == axes[0]:
-            ax.set_ylabel("Seasonal RPSS", size=16*font_scale)
-
-        ax.tick_params(axis='y', labelsize=12*font_scale)
-
-        # center tick labels between model groups
-        center_week3 = np.mean(week3_positions)
-        center_week4 = np.mean(week4_positions)
-        ax.set_xticks([center_week3, center_week4])
-        ax.set_xticklabels(["Week 3", "Week 4"], size=16*font_scale)
-
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
-        ax.xaxis.grid(False)
-
-    handles = [
-        plt.Line2D([0], [0], color=model_colors[m], lw=4)
-        for m in model_names
-    ]
-
-    fig.legend(
-        handles,
-        [all_model_names[m] for m in model_names],
-        loc="upper left",
-        bbox_to_anchor=(0.9, 0.9),
-        frameon=False,
-        fontsize=14*font_scale
-    )
-
-    filename = os.path.join(
-        OUT_DIR,
-        f"boxplot_seasonal_rpss_{target_dates}.pdf"
-    )
-
-    if save_fig:
-        plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
-        print(f"Figure saved: {filename}")
-
-    plt.tight_layout()
-
-    if show_fig:
-        plt.show()
-    else:
-        plt.close(fig)
-        
-
-
-
-
-def plot_rpss_diff_boxplot(all_seasonal_rpss,
-                           model_names=['ecmwf', 'deb_ecmwf', 'pbc_ecmwf'],
-                           target_dates='std_test',
-                           show_fig=True,
-                           save_fig=True):
-
-    raw_model = model_names[0]
-    deb_model = model_names[1]
-    pbc_model = model_names[2]
-
-    def get_values(ds, var):
-        return ds[var].values.flatten()
-
-    variables = {
-        "Temperature": "tas",
-        "Precipitation": "pr",
-        "Sea Level Pressure": "mslp",
-    }
-
-    horizons = {
-        "Week 3": 19,
-        "Week 4": 26,
-    }
-
-    # --- Plot ---
-    fig, axes = plt.subplots(1, 3, figsize=(18, 4), sharey=False)
-
-    for ax, (title, var_code) in zip(axes, variables.items()):
-
-        box_data = []
-
-        for week_name, horizon in horizons.items():
-
-            key = f"era5-{var_code}_{horizon}"
-            ds = all_seasonal_rpss[key]
-
-            raw = get_values(ds, raw_model)
-            deb = get_values(ds, deb_model)
-            pbc = get_values(ds, pbc_model)
-
-            # Paired differences
-            diff_raw = pbc - raw
-            diff_deb = pbc - deb
-
-            box_data.extend([diff_raw, diff_deb])
-
-        # Positions: grouped by week
-        positions = [1, 2, 4, 5]
-
-        bp = ax.boxplot(
-            box_data,
-            positions=positions,
-            widths=0.7,
-            patch_artist=True,
-            showfliers=True,
-        )
-
-        # Coloring
-        colors = ["tab:blue", "tab:orange"] * 2
-        for patch, color in zip(bp["boxes"], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.85)
-
-        # # Zero reference line
-        # ax.axhline(0, color="black", linewidth=1)
-
-        ax.set_title(title, fontsize=16)
-
-        if ax == axes[0]:
-            ax.set_ylabel("Seasonal RPSS Diff.", size=16)
-
-        ax.tick_params(axis='y', labelsize=12)
-        ax.set_xticks([1.5, 4.5])
-        ax.set_xticklabels(["Week 3", "Week 4"], size=16)
-
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
-        ax.xaxis.grid(False)
-        if var_code == 'pr':
-            ax.set_ylim(0, 0.1)
-        else:
-            ax.set_ylim(-0.05, 0.4)
-        
-
-    handles = [
-        plt.Line2D([0], [0], color="tab:blue", lw=4),
-        plt.Line2D([0], [0], color="tab:orange", lw=4),
-    ]
-
-    fig.legend(
-        handles,
-        [f"{all_model_names[pbc_model]} − {all_model_names[raw_model]}", f"{all_model_names[pbc_model]} − {all_model_names[deb_model]}"],
-        loc="upper left",
-        bbox_to_anchor=(0.9, 0.9),
-        frameon=False,
-        fontsize=14
-    )
-
-    # Save/Show
-    filename = os.path.join(
-        OUT_DIR,
-        f"boxplot_seasonal_rpss_diff_pbc_{target_dates}.pdf"
-    )
-
-    if save_fig:
-        plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
-        print(f"Figure saved: {filename}")
-
-    plt.tight_layout()
-
-    if show_fig:
-        plt.show()
-    else:
-        plt.close(fig)
 
 
 
@@ -947,6 +719,9 @@ def plot_rpss_barplot(
     legend_ncols=None,
     n_boot=5000,
     seed=42,
+    source_data=False,
+    source_data_filename="fig_0-rpss_barplot.xlsx",
+    source_data_sheet_prefix="Fig2a",
     verbose=False,
     suffix=""
 ):
@@ -997,7 +772,7 @@ def plot_rpss_barplot(
     # ----------------------------------------------------------
     # Normalize model specification
     # ----------------------------------------------------------
-    fig_width = 16 if variable_models is None else 22
+    fig_width = 16 
         
     if variable_models is None:
         if model_names is None:
@@ -1037,7 +812,7 @@ def plot_rpss_barplot(
 
     # ----------------------------------------------------------
     # Compute mean RPSS + statistical significance
-    # ----------------------------------------------------------
+    # ----------------------------------------------------------   
     results = {}
     results_all_significant = {}
     results_some_significant = {}
@@ -1048,7 +823,6 @@ def plot_rpss_barplot(
             for model in variable_models[var_name]:
                 values = ds[model].values.flatten()
                 results[(var_name, week_name)][model] =1-np.mean(values[~np.isnan(values)])/np.mean(ds["climatology"].values.flatten()[~np.isnan(values)])
-
             target_all_significant = {}
             target_some_significant = {}
             target_models = target_models_by_var[var_name]
@@ -1297,8 +1071,114 @@ def plot_rpss_barplot(
 
         plt.tight_layout(rect=[0, 0, 0.82, 1])
 
+
     # ----------------------------------------------------------
-    # Save
+    # Save source data
+    # ----------------------------------------------------------
+    def dict_to_dataframe(data, value_name):
+        """
+        Convert {(variable, horizon): {model: value}} to a tidy DataFrame.
+        """
+        rows = []
+
+        for (variable, horizon), models in data.items():
+            for model, value in models.items():
+                rows.append({
+                    "Variable": variable,
+                    "Horizon": horizon,
+                    "Model": model,
+                    value_name: value,
+                })
+
+        return pd.DataFrame(rows)
+
+    if source_data:
+
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename,
+        )
+
+        results_df = dict_to_dataframe(
+            results,
+            "RPSS",
+        )
+
+        results_all_significant_df = dict_to_dataframe(
+            results_all_significant,
+            "Significant_All",
+        )
+
+        results_some_significant_df = dict_to_dataframe(
+            results_some_significant,
+            "Significant_Some",
+        )
+
+        # ------------------------------------------------------
+        # Write to the existing workbook if it exists.
+        #
+        # This is important because Fig. 2a and Fig. 2b use
+        # the same XLSX file. Only the sheets belonging to this
+        # function are replaced; other sheets are preserved.
+        # ------------------------------------------------------
+        if os.path.exists(fig_filename):
+
+            with pd.ExcelWriter(
+                fig_filename,
+                engine="openpyxl",
+                mode="a",
+                if_sheet_exists="replace",
+            ) as writer:
+
+                results_df.to_excel(
+                    writer,
+                    sheet_name=f"{source_data_sheet_prefix}_results",
+                    index=False,
+                )
+
+                results_all_significant_df.to_excel(
+                    writer,
+                    sheet_name=f"{source_data_sheet_prefix}_significant_all",
+                    index=False,
+                )
+
+                results_some_significant_df.to_excel(
+                    writer,
+                    sheet_name=f"{source_data_sheet_prefix}_significant_some",
+                    index=False,
+                )
+
+        else:
+
+            with pd.ExcelWriter(
+                fig_filename,
+                engine="openpyxl",
+                mode="w",
+            ) as writer:
+
+                results_df.to_excel(
+                    writer,
+                    sheet_name=f"{source_data_sheet_prefix}_results",
+                    index=False,
+                )
+
+                results_all_significant_df.to_excel(
+                    writer,
+                    sheet_name=f"{source_data_sheet_prefix}_significant_all",
+                    index=False,
+                )
+
+                results_some_significant_df.to_excel(
+                    writer,
+                    sheet_name=f"{source_data_sheet_prefix}_significant_some",
+                    index=False,
+                )
+
+        print(f"Source data saved: {fig_filename}")
+
+                    
+    # ----------------------------------------------------------
+    # Save figure
     # ----------------------------------------------------------
 
     if by_season:
@@ -1326,6 +1206,13 @@ def plot_rpss_barplot(
 
         plt.savefig(
             filename.replace(".pdf", ".jpeg"),
+            dpi=300,
+            transparent=True,
+            bbox_inches="tight",
+        )
+
+        plt.savefig(
+            filename.replace(".pdf", ".eps"),
             dpi=300,
             transparent=True,
             bbox_inches="tight",
@@ -1397,11 +1284,13 @@ def plot_rpss_ci_barplot(
     week_gap=1.0,
     variable_gap=1.2,
     max_bar_width=0.18,
-    legend_location="auto",      # "auto", "top", "right"
+    legend_location="auto",
     legend_order=None,
     legend_ncols=None,
     n_boot=5000,
     seed=42,
+    source_data=False,
+    source_data_filename="fig_0-rpss_ci_barplot.xlsx",
     verbose=False,
     suffix=""
 ):
@@ -1409,8 +1298,8 @@ def plot_rpss_ci_barplot(
     Plots ranked probability skill score (RPSS) barplots with 95% bootstrap
     confidence intervals for each model bar.
 
-    Confidence intervals are computed using confidence_interval() on the model
-    RPS relative to climatology and then converted to RPSS intervals.
+    If source_data=True, saves the numerical data used to recreate the
+    figure to an Excel workbook.
 
     Args:
         all_daily_rps: dictionary of daily ranked probability score (RPS)
@@ -1432,9 +1321,12 @@ def plot_rpss_ci_barplot(
         legend_ncols: number of columns in the legend
         n_boot: number of bootstrap samples
         seed: random seed for reproducibility
+        source_data: whether to save source data to Excel
+        source_data_filename: filename for the Excel source-data file
         verbose: whether to print verbose output
         suffix: suffix for figure filenames
     """
+
     variables = {
         "Temperature": "tas",
         "Precipitation": "pr",
@@ -1456,14 +1348,23 @@ def plot_rpss_ci_barplot(
             raise ValueError(
                 "Either model_names or variable_models must be provided."
             )
-        model_names = [m for m in model_names if m != "climatology"]
+
+        model_names = [
+            m for m in model_names
+            if m != "climatology"
+        ]
+
         variable_models = {
             var: list(model_names)
             for var in variables
         }
+
     else:
         variable_models = {
-            var: [m for m in models if m != "climatology"]
+            var: [
+                m for m in models
+                if m != "climatology"
+            ]
             for var, models in variable_models.items()
         }
 
@@ -1473,32 +1374,58 @@ def plot_rpss_ci_barplot(
     results = {}
     ci_lower = {}
     ci_upper = {}
+
     for var_name, var_code in variables.items():
+
         for week_name, horizon in horizons.items():
-            ds = all_daily_rps[f"era5-{var_code}_{horizon}"]
+
+            ds = all_daily_rps[
+                f"era5-{var_code}_{horizon}"
+            ]
+
             results[(var_name, week_name)] = {}
             ci_lower[(var_name, week_name)] = {}
             ci_upper[(var_name, week_name)] = {}
 
             clim = ds["climatology"].values.flatten()
+
             for model in variable_models[var_name]:
+
                 values = ds[model].values.flatten()
-                mask = (~np.isnan(values)) & (~np.isnan(clim))
+
+                mask = (
+                    (~np.isnan(values))
+                    & (~np.isnan(clim))
+                )
 
                 if not np.any(mask):
+
                     results[(var_name, week_name)][model] = np.nan
                     ci_lower[(var_name, week_name)][model] = np.nan
                     ci_upper[(var_name, week_name)][model] = np.nan
+
                     continue
 
                 values_masked = values[mask]
                 clim_masked = clim[mask]
 
-                # RPSS = 1 - E[RPS_model] / E[RPS_climatology]
-                mean_ratio = np.mean(values_masked) / np.mean(clim_masked)
-                rpss = 1 - mean_ratio
-                results[(var_name, week_name)][model] = rpss
+                # --------------------------------------------------
+                # RPSS
+                # --------------------------------------------------
+                mean_ratio = (
+                    np.mean(values_masked)
+                    / np.mean(clim_masked)
+                )
 
+                rpss = 1 - mean_ratio
+
+                results[
+                    (var_name, week_name)
+                ][model] = rpss
+
+                # --------------------------------------------------
+                # Bootstrap confidence interval
+                # --------------------------------------------------
                 ratio_ci_low, ratio_ci_high = confidence_interval(
                     values_masked,
                     clim=clim_masked,
@@ -1507,17 +1434,29 @@ def plot_rpss_ci_barplot(
                     verbose=verbose
                 )
 
-                # Convert ratio CI to RPSS CI: [1-U, 1-L]
+                # Ratio CI -> RPSS CI
+                #
+                # RPSS = 1 - ratio
+                #
+                # Therefore:
+                # lower RPSS bound = 1 - upper ratio bound
+                # upper RPSS bound = 1 - lower ratio bound
                 rpss_ci_low = 1 - ratio_ci_high
                 rpss_ci_high = 1 - ratio_ci_low
 
-                ci_lower[(var_name, week_name)][model] = rpss_ci_low
-                ci_upper[(var_name, week_name)][model] = rpss_ci_high
+                ci_lower[
+                    (var_name, week_name)
+                ][model] = rpss_ci_low
+
+                ci_upper[
+                    (var_name, week_name)
+                ][model] = rpss_ci_high
 
                 if verbose:
                     print(
                         f"  {var_name} | {week_name} | {model} "
-                        f"RPSS 95% CI: [{rpss_ci_low}, {rpss_ci_high}]"
+                        f"RPSS 95% CI: "
+                        f"[{rpss_ci_low}, {rpss_ci_high}]"
                     )
 
     # ----------------------------------------------------------
@@ -1531,57 +1470,92 @@ def plot_rpss_ci_barplot(
 
     x = []
     current = 0
+
     for _ in variables:
         x.append(current)
         x.append(current + week_gap)
         current += week_gap + variable_gap
 
     x = np.asarray(x)
+
     max_models = max(
         len(v)
         for v in variable_models.values()
     )
 
-    bar_width = min(0.8 / max_models, max_bar_width)
-    fig, ax = plt.subplots(figsize=(fig_width, 6))
+    bar_width = min(
+        0.8 / max_models,
+        max_bar_width
+    )
+
+    fig, ax = plt.subplots(
+        figsize=(fig_width, 6)
+    )
+
     legend_seen = set()
 
     # ----------------------------------------------------------
     # Draw bars with CI error bars
     # ----------------------------------------------------------
     for group_idx, (var_name, week_name) in enumerate(categories):
+
         models = variable_models[var_name]
+
         offsets = (
             np.arange(len(models))
             - (len(models) - 1) / 2
         ) * bar_width
 
         for offset, model in zip(offsets, models):
+
             label = (
                 all_model_names[model]
                 if model not in legend_seen
                 else None
             )
 
-            y = results[(var_name, week_name)][model]
-            low = ci_lower[(var_name, week_name)][model]
-            high = ci_upper[(var_name, week_name)][model]
+            y = results[
+                (var_name, week_name)
+            ][model]
 
-            if np.isnan(y) or np.isnan(low) or np.isnan(high):
+            low = ci_lower[
+                (var_name, week_name)
+            ][model]
+
+            high = ci_upper[
+                (var_name, week_name)
+            ][model]
+
+            if (
+                np.isnan(y)
+                or np.isnan(low)
+                or np.isnan(high)
+            ):
                 yerr = None
             else:
-                yerr = np.array([[max(0, y - low)], [max(0, high - y)]])
+                yerr = np.array([
+                    [max(0, y - low)],
+                    [max(0, high - y)]
+                ])
 
             ax.bar(
                 x[group_idx] + offset,
                 y,
                 width=bar_width,
-                color=model_colors.get(model, "gray"),
+                color=model_colors.get(
+                    model,
+                    "gray"
+                ),
                 label=label,
                 yerr=yerr,
                 capsize=4,
-                error_kw=dict(ecolor='gray', elinewidth=1.5, capthick=1.5)
+                error_kw=dict(
+                    ecolor="gray",
+                    elinewidth=1.5,
+                    capthick=1.5
+                )
             )
+
             legend_seen.add(model)
 
     # ----------------------------------------------------------
@@ -1600,7 +1574,10 @@ def plot_rpss_ci_barplot(
         np.mean(x[4:6]),
     ]
 
-    for xc, var in zip(pair_centers, variables.keys()):
+    for xc, var in zip(
+        pair_centers,
+        variables.keys()
+    ):
 
         ax.text(
             xc,
@@ -1622,9 +1599,16 @@ def plot_rpss_ci_barplot(
         fontweight="bold",
     )
 
-    ax.tick_params(axis="y", labelsize=15)
+    ax.tick_params(
+        axis="y",
+        labelsize=15
+    )
 
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
+    ax.grid(
+        axis="y",
+        linestyle="--",
+        alpha=0.5
+    )
 
     ax.xaxis.grid(False)
 
@@ -1638,11 +1622,15 @@ def plot_rpss_ci_barplot(
     # ----------------------------------------------------------
     # Legend
     # ----------------------------------------------------------
-    handles, labels = ax.get_legend_handles_labels()
+    handles, labels = (
+        ax.get_legend_handles_labels()
+    )
 
     if legend_order is not None:
 
-        lookup = dict(zip(labels, handles))
+        lookup = dict(
+            zip(labels, handles)
+        )
 
         ordered_labels = [
             all_model_names[m]
@@ -1661,11 +1649,18 @@ def plot_rpss_ci_barplot(
     if legend_location == "auto":
 
         same_models = all(
-            variable_models[v] == next(iter(variable_models.values()))
+            variable_models[v]
+            == next(
+                iter(variable_models.values())
+            )
             for v in variable_models
         )
 
-        legend_location = "top" if same_models else "right"
+        legend_location = (
+            "top"
+            if same_models
+            else "right"
+        )
 
     if legend_location == "top":
 
@@ -1674,7 +1669,9 @@ def plot_rpss_ci_barplot(
             if len(labels) <= 5:
                 legend_ncols = len(labels)
             else:
-                legend_ncols = math.ceil(len(labels) / 2)
+                legend_ncols = math.ceil(
+                    len(labels) / 2
+                )
 
         ax.legend(
             handles,
@@ -1701,24 +1698,137 @@ def plot_rpss_ci_barplot(
             bbox_to_anchor=(1.01, 1),
         )
 
-        plt.tight_layout(rect=[0, 0, 0.82, 1])
+        plt.tight_layout(
+            rect=[0, 0, 0.82, 1]
+        )
 
     # ----------------------------------------------------------
-    # Save
+    # Save source data
     # ----------------------------------------------------------
+    if source_data:
 
+        source_data_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename,
+        )
+
+        source_rows = []
+
+        for (var_name, week_name) in categories:
+
+            # Convert the human-readable week name back
+            # to the numerical horizon.
+            horizon = horizons[week_name]
+
+            for model in variable_models[var_name]:
+
+                rpss = results[
+                    (var_name, week_name)
+                ][model]
+
+                lower = ci_lower[
+                    (var_name, week_name)
+                ][model]
+
+                upper = ci_upper[
+                    (var_name, week_name)
+                ][model]
+
+                if (
+                    np.isnan(rpss)
+                    or np.isnan(lower)
+                    or np.isnan(upper)
+                ):
+                    error_lower = np.nan
+                    error_upper = np.nan
+                else:
+                    error_lower = max(
+                        0,
+                        rpss - lower
+                    )
+                    error_upper = max(
+                        0,
+                        upper - rpss
+                    )
+
+                source_rows.append({
+                    "Variable": var_name,
+                    "Variable_code": variables[var_name],
+                    "Horizon": horizon,
+                    "Horizon_label": week_name,
+                    "Model": model,
+                    "Model_label": all_model_names.get(
+                        model,
+                        model
+                    ),
+                    "RPSS": rpss,
+                    "CI_lower": lower,
+                    "CI_upper": upper,
+                    "CI_error_lower": error_lower,
+                    "CI_error_upper": error_upper,
+                })
+
+        source_df = pd.DataFrame(
+            source_rows
+        )
+
+        # Metadata is useful for documenting exactly how
+        # the bootstrap CIs were generated.
+        metadata_df = pd.DataFrame({
+            "Parameter": [
+                "target_dates",
+                "n_boot",
+                "seed",
+                "by_season",
+            ],
+            "Value": [
+                target_dates,
+                n_boot,
+                seed,
+                by_season,
+            ]
+        })
+
+        with pd.ExcelWriter(
+            source_data_filename,
+            engine="openpyxl",
+            mode="w",
+        ) as writer:
+
+            source_df.to_excel(
+                writer,
+                sheet_name="results",
+                index=False,
+            )
+
+            metadata_df.to_excel(
+                writer,
+                sheet_name="metadata",
+                index=False,
+            )
+
+        print(
+            f"Source data saved: "
+            f"{source_data_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
     if by_season:
 
         filename = os.path.join(
             OUT_DIR,
-            f"barplot_seasonal_rpss_ci{suffix}_{target_dates}.pdf",
+            f"barplot_seasonal_rpss_ci"
+            f"{suffix}_{target_dates}.pdf",
         )
 
     else:
 
         filename = os.path.join(
             OUT_DIR,
-            f"barplot_daily_rpss_ci{suffix}_{target_dates}.pdf",
+            f"barplot_daily_rpss_ci"
+            f"{suffix}_{target_dates}.pdf",
         )
 
     if save_fig:
@@ -1737,12 +1847,24 @@ def plot_rpss_ci_barplot(
             bbox_inches="tight",
         )
 
-        print(f"Figure saved: {filename}")
+        plt.savefig(
+            filename.replace(".pdf", ".eps"),
+            dpi=300,
+            transparent=True,
+            bbox_inches="tight",
+        )
+
+        print(
+            f"Figure saved: {filename}"
+        )
 
     if show_fig:
         plt.show()
     else:
         plt.close(fig)
+
+
+
 
 
 def get_all_lat_lon_rpss(model_names = ['ecmwf', 'pbc_ecmwf', 'msn', 'pbc_msn', 'duet'],
@@ -1858,90 +1980,6 @@ def plot_rpss_bar_threshold(
     filename = os.path.join(
         OUT_DIR,
         f"lat_lon_rpss_by_threshold_{task}_{target_dates}.pdf"
-    )
-
-    if save_fig:
-        plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
-        print(f"Figure saved: {filename}")
-
-    if show_fig:
-        plt.show()
-    else:
-        plt.close(fig)
-
-def plot_rpss_bar_threshold_sb(metrics_dic,
-                        model_names = ['duet', 'pbc_msn', 'msn', 'ecmwf'],
-                        gt_id = "era5-tas",
-                        horizon = 19,
-                        target_dates = "std_test",
-                        thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
-                        show_fig = True,
-                        save_fig = True):
-
-
-    sns.set_context("notebook", font_scale=2)
-    sns.set_style("whitegrid")
-
-    task = f"{gt_id}_{horizon}"
-    ds = metrics_dic[task]
-
-    records = []
-
-    for m in model_names:
-
-        if m not in ds.data_vars:
-            print(f"Missing model {m} in {task}")
-            continue
-
-        da = ds[m]
-
-        # total valid grid cells
-        total = da.notnull().sum().item()
-
-        for thr in thresholds:
-
-            count_above = (da >= thr).sum().item()
-
-            frac = count_above / total if total > 0 else np.nan
-
-            records.append({
-                "model": m,
-                "rpss_threshold": thr,
-                "fraction_above": frac
-            })
-
-    df_barplot = pd.DataFrame(records)
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    ax = sns.barplot(
-        data=df_barplot,
-        x="rpss_threshold",
-        y="fraction_above",
-        hue="model",
-        palette=model_colors,
-        ax=ax
-    )
-    
-    ax.set_ylim(0, 1.05)
-    ax.set_xlabel("RPSS threshold", fontweight="bold", labelpad=22)
-    ax.set_ylabel(f"Fraction of grid cells\nabove threshold", fontweight="bold", labelpad=22)
-    ax.set_title(f"{gt_id_names[gt_id]}, {horizon_names[horizon]}", fontweight="bold", pad=22)
-
-
-    handles, labels = ax.get_legend_handles_labels()
-    new_labels = [all_model_names.get(l, l) for l in labels]
-    ax.legend(handles, new_labels)#, title="Model")
-
-    
-    sns.move_legend(ax, "upper right")
-    
-    plt.tight_layout()
-
-
-    filename = os.path.join(
-        OUT_DIR,
-        f"lat_lon_rpss_by_threshold_{task}_{target_dates}_sb.pdf"
     )
 
     if save_fig:
@@ -2078,24 +2116,32 @@ def plot_seasonal_rpss_all_tasks(all_seasonal_rpss,
         plt.close(fig)
 
 
-def plot_metric_diff_grid_6x4(model_names,
-                              gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
-                              horizons=[19, 26],
-                              metric="lat_lon_rps",
-                              target_dates="std_test",
-                              diff_cmap="seismic",
-                              skill_cmap="seismic",
-                              show_fig=True,
-                              save_fig=False):
+
+
+def plot_metric_diff_grid_6x4(
+    model_names,
+    gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
+    horizons=[19, 26],
+    metric="lat_lon_rps",
+    target_dates="std_test",
+    diff_cmap="seismic",
+    skill_cmap="seismic",
+    source_data=False,
+    source_data_filename="fig_0-metric_diff_grid_6x4.xlsx",
+    source_data_sheet_prefix="Fig2b",
+    show_fig=True,
+    save_fig=False,
+):
 
     num_rows = len(gt_ids) * len(horizons)
     num_cols = len(model_names) + 2  # models + spacer + diff
 
     # Create a visible gap via a thin spacer column
-    width_ratios = [1]*len(model_names) + [0.05, 1]
+    width_ratios = [1] * len(model_names) + [0.05, 1]
 
     fig, axes = plt.subplots(
-        num_rows, num_cols,
+        num_rows,
+        num_cols,
         figsize=(18, 18),
         subplot_kw={"projection": ccrs.Robinson()},
         constrained_layout=True,
@@ -2104,44 +2150,96 @@ def plot_metric_diff_grid_6x4(model_names,
 
     # Load arid mask once if precipitation is being plotted
     if any(gt_id.endswith("pr") for gt_id in gt_ids):
-        # print("Computing zero quintiles mask")
-        quintiles = xr.open_dataset("data/era5-quintiles-pr.zarr", engine="zarr").load()
+        quintiles = xr.open_dataset(
+            "data/era5-quintiles-pr.zarr",
+            engine="zarr"
+        ).load()
+
+    # ----------------------------------------------------------
+    # Storage for source data
+    # ----------------------------------------------------------
+    source_data_dict = {}
+    improvement_summary = []
 
     curr_row = 0
     im_metric, im_diff = None, None
 
     for gt_id in gt_ids:
+
         for horizon in horizons:
 
             task = f"{gt_id}_{horizon}"
 
             arid_mask = None
+
             if gt_id.endswith("pr"):
-                quintiles_sel = quintiles.sel(time=get_target_dates(target_dates, horizon))
-                arid_mask = (quintiles_sel["pr"].isel(quantile=-1) == 0).any(dim="time")        
 
+                quintiles_sel = quintiles.sel(
+                    time=get_target_dates(
+                        target_dates,
+                        horizon
+                    )
+                )
+
+                arid_mask = (
+                    quintiles_sel["pr"]
+                    .isel(quantile=-1)
+                    == 0
+                ).any(dim="time")
+
+            # --------------------------------------------------
             # Load spatial maps
+            # --------------------------------------------------
             metrics = {}
+
             for model_name in model_names:
-                sn = get_selected_submodel_name(model_name, gt_id, horizon)
-                metric_f = 'lat_lon_rps' if metric.startswith('lat_lon_rps') else metric
 
-                filename = os.path.join('eval', 'metrics', model_name,
-                                        'submodel_forecasts', sn,
-                                        task,
-                                        f'{metric_f}-{task}-{target_dates}.zarr')
+                sn = get_selected_submodel_name(
+                    model_name,
+                    gt_id,
+                    horizon
+                )
 
-                metrics[model_name] = xr.open_zarr(filename).load()
+                metric_f = (
+                    'lat_lon_rps'
+                    if metric.startswith('lat_lon_rps')
+                    else metric
+                )
 
-            metrics['diff'] = metrics[model_names[-1]] - metrics[model_names[-2]]
+                filename = os.path.join(
+                    'eval',
+                    'metrics',
+                    model_name,
+                    'submodel_forecasts',
+                    sn,
+                    task,
+                    f'{metric_f}-{task}-{target_dates}.zarr'
+                )
 
-            
+                metrics[model_name] = xr.open_zarr(
+                    filename
+                ).load()
+
+            # Difference between final two models
+            metrics['diff'] = (
+                metrics[model_names[-1]]
+                - metrics[model_names[-2]]
+            )
+
             row_axes = axes[curr_row]
 
+            # --------------------------------------------------
             # Style all axes
+            # --------------------------------------------------
             for ax in row_axes:
+
                 ax.set_global()
-                ax.coastlines(color="black", linewidth=0.6)
+
+                ax.coastlines(
+                    color="black",
+                    linewidth=0.6
+                )
+
                 ax.spines["geo"].set_linewidth(2.25)
 
             # Hide spacer column
@@ -2149,51 +2247,123 @@ def plot_metric_diff_grid_6x4(model_names,
             row_axes[spacer_idx].set_visible(False)
 
             # Row label
-            row_label = f"{gt_id_names[gt_id]}\n{horizon_names[horizon]}"
-            row_axes[0].text(-0.15, 0.5, row_label,
-                             va="center", ha="center",
-                             rotation=90,
-                             transform=row_axes[0].transAxes,
-                             fontsize=20)
+            row_label = (
+                f"{gt_id_names[gt_id]}\n"
+                f"{horizon_names[horizon]}"
+            )
 
+            row_axes[0].text(
+                -0.15,
+                0.5,
+                row_label,
+                va="center",
+                ha="center",
+                rotation=90,
+                transform=row_axes[0].transAxes,
+                fontsize=20
+            )
+
+            # --------------------------------------------------
             # Plot model columns
+            # --------------------------------------------------
             for i, model_name in enumerate(model_names):
+
                 data = metrics[model_name][metric]
+
                 if arid_mask is not None:
                     data = data.where(~arid_mask)
+
                 im = data.plot(
                     ax=row_axes[i],
                     transform=ccrs.PlateCarree(),
                     cmap=skill_cmap,
-                    vmin=-1, vmax=1,
+                    vmin=-1,
+                    vmax=1,
                     add_colorbar=False,
                     rasterized=True
                 )
 
+                if source_data:
 
-            # Diff column (last column)
+                    source_data_dict[
+                        f"{task}_{model_name}"
+                    ] = data
+
+            # --------------------------------------------------
+            # Diff column
+            # --------------------------------------------------
             diff_ax = row_axes[-1]
+
             diff_data = metrics["diff"][metric]
+
             if arid_mask is not None:
                 diff_data = diff_data.where(~arid_mask)
+
             im2 = diff_data.plot(
                 ax=diff_ax,
                 transform=ccrs.PlateCarree(),
                 cmap=diff_cmap,
-                vmin=-0.2, vmax=0.2,
+                vmin=-0.2,
+                vmax=0.2,
                 add_colorbar=False,
                 rasterized=True
             )
 
-            nonnull = diff_data.notnull()
-            num_nonnull = nonnull.sum().values
-            print(f"{task}: % grid cells improved: "
-                  f"{float(((nonnull & (diff_data > 0)).sum() / num_nonnull).values)} "
-                  f"of {num_nonnull}")
+            if source_data:
 
-            # Titles (top row only)
+                source_data_dict[
+                    f"{task}_diff"
+                ] = diff_data
+
+            # --------------------------------------------------
+            # Improvement statistics
+            # --------------------------------------------------
+            nonnull = diff_data.notnull()
+
+            num_nonnull = nonnull.sum().values
+
+            num_improved = (
+                nonnull & (diff_data > 0)
+            ).sum().values
+
+            fraction_improved = float(
+                (
+                    (nonnull & (diff_data > 0)).sum()
+                    / num_nonnull
+                ).values
+            )
+
+            print(
+                f"{task}: % grid cells improved: "
+                f"{fraction_improved} "
+                f"of {num_nonnull}"
+            )
+
+            if source_data:
+
+                improvement_summary.append(
+                    {
+                        "Task": task,
+                        "Variable": gt_id_names[gt_id],
+                        "Horizon": horizon_names[horizon],
+                        "Number of grid cells": int(num_nonnull),
+                        "Number improved": int(num_improved),
+                        "Fraction improved": fraction_improved,
+                        "Percent improved": (
+                            100 * fraction_improved
+                            if not np.isnan(fraction_improved)
+                            else np.nan
+                        ),
+                    }
+                )
+
+            # --------------------------------------------------
+            # Titles
+            # --------------------------------------------------
             if curr_row == 0:
+
                 for i, model_name in enumerate(model_names):
+
                     row_axes[i].set_title(
                         all_model_names[model_name],
                         fontsize=20,
@@ -2201,200 +2371,660 @@ def plot_metric_diff_grid_6x4(model_names,
                     )
 
                 diff_ax.set_title(
-                    f"{all_model_names[model_names[-1]]} - {all_model_names[model_names[-2]]}",
+                    f"{all_model_names[model_names[-1]]} - "
+                    f"{all_model_names[model_names[-2]]}",
                     fontsize=20,
                     pad=30
                 )
+
             else:
+
                 for ax in row_axes:
                     ax.set_title("")
 
             im_metric, im_diff = im, im2
+
             curr_row += 1
 
-
+    # ----------------------------------------------------------
     # Colorbars
-    cax1 = fig.add_axes([0.11, -0.02, 0.6, 0.02])
-    cax2 = fig.add_axes([0.79, -0.02, 0.19, 0.02])
-    
-    cbar1 = fig.colorbar(im_metric, cax=cax1,
-                         orientation="horizontal",
-                         fraction=0.02, pad=0.02, aspect=40)
+    # ----------------------------------------------------------
+    cax1 = fig.add_axes(
+        [0.11, -0.02, 0.6, 0.02]
+    )
 
-    cbar1.set_label(metric_names[metric].replace('RPSS', 'Ranked probability skill score (RPSS)'), fontsize=20, labelpad=10)
-    cbar1.ax.tick_params(labelsize=20)
+    cax2 = fig.add_axes(
+        [0.79, -0.02, 0.19, 0.02]
+    )
 
-    cbar2 = fig.colorbar(im_diff, cax=cax2,
-                         orientation="horizontal",
-                         fraction=0.02, pad=0.02, aspect=40)
-    cbar2.set_label(f"{metric_names[metric]} difference",
-                    fontsize=20, labelpad=10)
-    cbar2.ax.tick_params(labelsize=20)
+    cbar1 = fig.colorbar(
+        im_metric,
+        cax=cax1,
+        orientation="horizontal",
+        fraction=0.02,
+        pad=0.02,
+        aspect=40
+    )
 
+    cbar1.set_label(
+        metric_names[metric].replace(
+            'RPSS',
+            'Ranked probability skill score (RPSS)'
+        ),
+        fontsize=20,
+        labelpad=10
+    )
+
+    cbar1.ax.tick_params(
+        labelsize=20
+    )
+
+    cbar2 = fig.colorbar(
+        im_diff,
+        cax=cax2,
+        orientation="horizontal",
+        fraction=0.02,
+        pad=0.02,
+        aspect=40
+    )
+
+    cbar2.set_label(
+        f"{metric_names[metric]} difference",
+        fontsize=20,
+        labelpad=10
+    )
+
+    cbar2.ax.tick_params(
+        labelsize=20
+    )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
     if save_fig:
+
         outfile = os.path.join(
-            'viz', 'pbc',
+            'viz',
+            'pbc',
             f"{metric}_{target_dates}.pdf"
         )
-        plt.savefig(outfile, dpi=100, bbox_inches='tight')
+
+        plt.savefig(
+            outfile,
+            dpi=100,
+            bbox_inches='tight'
+        )
+
         print(f"Saved: {outfile}")
 
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        # Both Fig. 2a and Fig. 2b must resolve to exactly the
+        # same workbook.
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename
+        )
+
+        # Make sure the source-data directory exists.
+        os.makedirs(
+            SRC_DATA_DIR,
+            exist_ok=True
+        )
+
+        # ------------------------------------------------------
+        # Write to existing workbook if present.
+        #
+        # mode="a" preserves the Fig2a sheets written by the
+        # first function.
+        #
+        # if_sheet_exists="replace" means that rerunning this
+        # function updates only its own sheets.
+        # ------------------------------------------------------
+        if os.path.exists(fig_filename):
+
+            writer_mode = "a"
+
+        else:
+
+            writer_mode = "w"
+
+        with pd.ExcelWriter(
+            fig_filename,
+            engine="openpyxl",
+            mode=writer_mode,
+            if_sheet_exists=(
+                "replace"
+                if writer_mode == "a"
+                else None
+            ),
+        ) as writer:
+
+            # ----------------------------------------------
+            # Improvement summary
+            # ----------------------------------------------
+            improvement_df = pd.DataFrame(
+                improvement_summary
+            )
+
+            improvement_df.to_excel(
+                writer,
+                sheet_name=f"{source_data_sheet_prefix}_summary",
+                index=False,
+            )
+
+            # ----------------------------------------------
+            # Save each spatial map
+            # ----------------------------------------------
+            for sheet_name, data in source_data_dict.items():
+                sheet_name = sheet_name.replace('era5-','')
+
+                # Convert DataArray to DataFrame.
+                #
+                # reset_index() puts latitude/longitude and
+                # other coordinates into ordinary columns.
+                data_df = data.to_dataframe(
+                    name=metric
+                ).reset_index()
+
+                # Excel sheet names have a maximum length of
+                # 31 characters.
+                safe_sheet_name = (
+                    f"{source_data_sheet_prefix}_{sheet_name}"
+                )[:31]
+
+                data_df.to_excel(
+                    writer,
+                    sheet_name=safe_sheet_name,
+                    index=False,
+                    na_rep="NaN",
+                )
+
+        print(
+            f"Source data saved: {fig_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Display / close
+    # ----------------------------------------------------------
     if show_fig:
         plt.show()
     else:
         plt.close(fig)
-        
-    
 
-def plot_metric_diff_grid_6x3(model_names,
-                              gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
-                              horizons=[19, 26],
-                              metric="lat_lon_rps",
-                              target_dates="std_test",
-                              diff_cmap="seismic",
-                              skill_cmap="seismic",
-                              show_fig=True,
-                              save_fig=False):
+
+
+def plot_metric_diff_grid_6x3(
+    model_names,
+    gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
+    horizons=[19, 26],
+    metric="lat_lon_rps",
+    target_dates="std_test",
+    diff_cmap="seismic",
+    skill_cmap="seismic",
+    source_data=False,
+    source_data_filename="fig_2-rpss_ci_barplot_ecmwf.xlsx",
+    show_fig=True,
+    save_fig=False
+):
 
     num_rows = len(gt_ids) * len(horizons)
     num_cols = 3
 
-    fig, axes = plt.subplots(num_rows, num_cols,
-                             figsize=(14, 18),
-                             subplot_kw={"projection": ccrs.Robinson()},
-                             constrained_layout=True)
-    
+    fig, axes = plt.subplots(
+        num_rows,
+        num_cols,
+        figsize=(14, 18),
+        subplot_kw={"projection": ccrs.Robinson()},
+        constrained_layout=True
+    )
+
+    # Make axes 2D if there is only one row
+    if num_rows == 1:
+        axes = axes[np.newaxis, :]
+
+    # ----------------------------------------------------------
     # Load arid mask once if precipitation is being plotted
+    # ----------------------------------------------------------
     if any(gt_id.endswith("pr") for gt_id in gt_ids):
-        # print("Computing zero quintiles mask")
-        quintiles = xr.open_dataset("data/era5-quintiles-pr.zarr", engine="zarr").load()
+        quintiles = xr.open_dataset(
+            "data/era5-quintiles-pr.zarr",
+            engine="zarr"
+        ).load()
+
+    # ----------------------------------------------------------
+    # Storage for source data
+    # ----------------------------------------------------------
+    source_data_dict = {}
+    improvement_summary = []
 
     curr_row = 0
     im_metric, im_diff = None, None
 
+    # ----------------------------------------------------------
+    # Loop over variables and horizons
+    # ----------------------------------------------------------
     for gt_id in gt_ids:
         for horizon in horizons:
 
             task = f"{gt_id}_{horizon}"
 
+            # --------------------------------------------------
+            # Arid precipitation mask
+            # --------------------------------------------------
             arid_mask = None
+
             if gt_id.endswith("pr"):
-                quintiles_sel = quintiles.sel(time=get_target_dates(target_dates, horizon))
-                arid_mask = (quintiles_sel["pr"].isel(quantile=-1) == 0).any(dim="time")    
+                quintiles_sel = quintiles.sel(
+                    time=get_target_dates(
+                        target_dates,
+                        horizon
+                    )
+                )
 
+                arid_mask = (
+                    quintiles_sel["pr"]
+                    .isel(quantile=-1)
+                    == 0
+                ).any(dim="time")
+
+            # --------------------------------------------------
             # Load spatial metric maps
+            # --------------------------------------------------
             metrics = {}
+
             for model_name in model_names:
-                sn = get_selected_submodel_name(model_name, gt_id, horizon)
-                metric_f = 'lat_lon_rps' if metric.startswith('lat_lon_rps') else metric
 
-                filename = os.path.join('eval', 'metrics', model_name,
-                                        'submodel_forecasts', sn,
-                                        task,
-                                        f'{metric_f}-{task}-{target_dates}.zarr')
+                sn = get_selected_submodel_name(
+                    model_name,
+                    gt_id,
+                    horizon
+                )
 
-                metrics[model_name] = xr.open_zarr(filename)
+                metric_f = (
+                    'lat_lon_rps'
+                    if metric.startswith('lat_lon_rps')
+                    else metric
+                )
 
-            metrics['diff'] = metrics[model_names[1]] - metrics[model_names[0]]
+                filename = os.path.join(
+                    'eval',
+                    'metrics',
+                    model_name,
+                    'submodel_forecasts',
+                    sn,
+                    task,
+                    f'{metric_f}-{task}-{target_dates}.zarr'
+                )
 
+                metrics[model_name] = xr.open_zarr(
+                    filename
+                )
 
+            # Difference: Model B - Model A
+            metrics['diff'] = (
+                metrics[model_names[1]]
+                - metrics[model_names[0]]
+            )
+
+            # --------------------------------------------------
             # Plot row
+            # --------------------------------------------------
             row_axes = axes[curr_row]
 
             for ax in row_axes:
                 ax.set_global()
-                ax.coastlines(color="black", linewidth=0.6)
+                ax.coastlines(
+                    color="black",
+                    linewidth=0.6
+                )
                 ax.spines["geo"].set_linewidth(1.5)
 
             # Row label
-            row_label = f"{gt_id_names[gt_id]}\n{horizon_names[horizon]}"
-            row_axes[0].text(-0.15, 0.5, row_label,
-                             va="center", ha="center",
-                             rotation=90,
-                             transform=row_axes[0].transAxes,
-                             fontsize=20)
+            row_label = (
+                f"{gt_id_names[gt_id]}\n"
+                f"{horizon_names[horizon]}"
+            )
 
-            # --- Column 0: Model A ---
-            data = metrics[model_names[0]][metric]
+            row_axes[0].text(
+                -0.15,
+                0.5,
+                row_label,
+                va="center",
+                ha="center",
+                rotation=90,
+                transform=row_axes[0].transAxes,
+                fontsize=20
+            )
+
+            # --------------------------------------------------
+            # Column 0: Model A
+            # --------------------------------------------------
+            data_model_a = metrics[
+                model_names[0]
+            ][metric]
+
             if arid_mask is not None:
-                data = data.where(~arid_mask)
-            im0 = data.plot(
+                data_model_a = data_model_a.where(
+                    ~arid_mask
+                )
+
+            im0 = data_model_a.plot(
                 ax=row_axes[0],
                 transform=ccrs.PlateCarree(),
                 cmap=skill_cmap,
-                vmin=-1, vmax=1,
+                vmin=-1,
+                vmax=1,
                 add_colorbar=False,
                 rasterized=True
             )
 
+            # --------------------------------------------------
+            # Column 1: Model B
+            # --------------------------------------------------
+            data_model_b = metrics[
+                model_names[1]
+            ][metric]
 
-            # --- Column 1: Model B ---
-            data = metrics[model_names[1]][metric]
             if arid_mask is not None:
-                data = data.where(~arid_mask)
-            im1 = data.plot(
+                data_model_b = data_model_b.where(
+                    ~arid_mask
+                )
+
+            im1 = data_model_b.plot(
                 ax=row_axes[1],
                 transform=ccrs.PlateCarree(),
                 cmap=skill_cmap,
-                vmin=-1, vmax=1,
+                vmin=-1,
+                vmax=1,
                 add_colorbar=False,
                 rasterized=True
             )
 
-            # --- Column 2: Difference ---
+            # --------------------------------------------------
+            # Column 2: Difference
+            # --------------------------------------------------
             diff_data = metrics["diff"][metric]
+
             if arid_mask is not None:
-                diff_data = diff_data.where(~arid_mask)
+                diff_data = diff_data.where(
+                    ~arid_mask
+                )
+
             im2 = diff_data.plot(
                 ax=row_axes[2],
                 transform=ccrs.PlateCarree(),
                 cmap=diff_cmap,
-                vmin=-0.5, vmax=0.5,
+                vmin=-0.5,
+                vmax=0.5,
                 add_colorbar=False,
                 rasterized=True
             )
-            nonnull = diff_data.notnull()
-            num_nonnull = nonnull.sum().values
-            print(f"{task}: % grid cells improved: "
-                  f"{float(((nonnull & (diff_data > 0)).sum() / num_nonnull).values)} "
-                  f"of {num_nonnull}")
 
-            # Column titles only once
-            if curr_row == 0:
-                row_axes[0].set_title(all_model_names[model_names[0]],
-                                      fontsize=20, pad=30)
-                row_axes[1].set_title(all_model_names[model_names[1]],
-                                      fontsize=20, pad=30)
-                row_axes[2].set_title(
-                    f"{all_model_names[model_names[1]]} - {all_model_names[model_names[0]]}",
-                    fontsize=22, pad=30
+            # --------------------------------------------------
+            # Improvement statistics
+            # --------------------------------------------------
+            nonnull = diff_data.notnull()
+
+            num_nonnull = int(
+                nonnull.sum().values
+            )
+
+            num_improved = int(
+                (
+                    nonnull
+                    & (diff_data > 0)
+                ).sum().values
+            )
+
+            if num_nonnull > 0:
+                fraction_improved = (
+                    num_improved
+                    / num_nonnull
                 )
             else:
+                fraction_improved = np.nan
+
+            print(
+                f"{task}: % grid cells improved: "
+                f"{fraction_improved} "
+                f"of {num_nonnull}"
+            )
+
+            # Save summary for source data
+            if source_data:
+
+                improvement_summary.append({
+                    "Task": task,
+                    "Variable": gt_id_names[gt_id],
+                    "GT_ID": gt_id,
+                    "Horizon": horizon_names[horizon],
+                    "Horizon_value": horizon,
+                    "Model_A": model_names[0],
+                    "Model_B": model_names[1],
+                    "Difference": (
+                        f"{model_names[1]} - "
+                        f"{model_names[0]}"
+                    ),
+                    "Number of grid cells": num_nonnull,
+                    "Number improved": num_improved,
+                    "Fraction improved": fraction_improved,
+                    "Percent improved": (
+                        100 * fraction_improved
+                        if not np.isnan(fraction_improved)
+                        else np.nan
+                    ),
+                })
+
+                # --------------------------------------------------
+                # Store the actual plotted data
+                # --------------------------------------------------
+                source_data_dict[
+                    f"{task}_{model_names[0]}"
+                ] = data_model_a
+
+                source_data_dict[
+                    f"{task}_{model_names[1]}"
+                ] = data_model_b
+
+                source_data_dict[
+                    f"{task}_diff"
+                ] = diff_data
+
+            # --------------------------------------------------
+            # Column titles only once
+            # --------------------------------------------------
+            if curr_row == 0:
+
+                row_axes[0].set_title(
+                    all_model_names[model_names[0]],
+                    fontsize=20,
+                    pad=30
+                )
+
+                row_axes[1].set_title(
+                    all_model_names[model_names[1]],
+                    fontsize=20,
+                    pad=30
+                )
+
+                row_axes[2].set_title(
+                    f"{all_model_names[model_names[1]]} - "
+                    f"{all_model_names[model_names[0]]}",
+                    fontsize=22,
+                    pad=30
+                )
+
+            else:
+
                 for ax in row_axes:
                     ax.set_title("")
 
             im_metric, im_diff = im0, im2
+
             curr_row += 1
 
+    # ----------------------------------------------------------
     # Colorbars
-    cbar1 = fig.colorbar(im_metric, ax=axes[:, :2],
-                         orientation="horizontal",
-                         fraction=0.02, pad=0.02, aspect=40)
-    cbar1.set_label(metric_names[metric].replace('RPSS', 'Ranked probability skill score (RPSS)'), fontsize=20, labelpad=10)
-    cbar1.ax.tick_params(labelsize=20)
+    # ----------------------------------------------------------
+    cbar1 = fig.colorbar(
+        im_metric,
+        ax=axes[:, :2],
+        orientation="horizontal",
+        fraction=0.02,
+        pad=0.02,
+        aspect=40
+    )
 
-    cbar2 = fig.colorbar(im_diff, ax=axes[:, 2],
-                         orientation="horizontal",
-                         fraction=0.02, pad=0.02, aspect=20)
-    cbar2.set_label(f"{metric_names[metric]} difference",
-                    fontsize=20, labelpad=10)
-    cbar2.ax.tick_params(labelsize=20)
+    cbar1.set_label(
+        metric_names[metric].replace(
+            'RPSS',
+            'Ranked probability skill score (RPSS)'
+        ),
+        fontsize=20,
+        labelpad=10
+    )
 
+    cbar1.ax.tick_params(
+        labelsize=20
+    )
+
+    cbar2 = fig.colorbar(
+        im_diff,
+        ax=axes[:, 2],
+        orientation="horizontal",
+        fraction=0.02,
+        pad=0.02,
+        aspect=20
+    )
+
+    cbar2.set_label(
+        f"{metric_names[metric]} difference",
+        fontsize=20,
+        labelpad=10
+    )
+
+    cbar2.ax.tick_params(
+        labelsize=20
+    )
+
+    # ----------------------------------------------------------
+    # Save source data -- APPEND to existing workbook
+    # ----------------------------------------------------------
+    if source_data:
+
+        source_data_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename,
+        )
+
+        # ------------------------------------------------------
+        # Determine whether workbook already exists
+        # ------------------------------------------------------
+        workbook_exists = os.path.exists(
+            source_data_filename
+        )
+
+        writer_kwargs = {
+            "engine": "openpyxl",
+            "mode": "a" if workbook_exists else "w",
+        }
+
+        # When appending, replace sheets if this function has
+        # previously been run with the same filename.
+        if workbook_exists:
+            writer_kwargs["if_sheet_exists"] = "replace"
+
+        with pd.ExcelWriter(
+            source_data_filename,
+            **writer_kwargs
+        ) as writer:
+
+            # --------------------------------------------------
+            # Improvement summary
+            # --------------------------------------------------
+            improvement_df = pd.DataFrame(
+                improvement_summary
+            )
+
+            improvement_df.to_excel(
+                writer,
+                sheet_name="metric_diff_summary",
+                index=False
+            )
+
+            # --------------------------------------------------
+            # Spatial maps
+            # --------------------------------------------------
+            for sheet_name, data in source_data_dict.items():
+
+                # Convert DataArray to a self-contained table
+                data_df = data.to_dataframe(
+                    name=metric
+                ).reset_index()
+
+                # Excel sheet names max out at 31 characters
+                safe_sheet_name = sheet_name[:31]
+
+                data_df.to_excel(
+                    writer,
+                    sheet_name=safe_sheet_name,
+                    index=False,
+                    na_rep="NaN"
+                )
+
+            # --------------------------------------------------
+            # Metadata
+            # --------------------------------------------------
+            metadata_df = pd.DataFrame({
+                "Parameter": [
+                    "metric",
+                    "target_dates",
+                    "Model_A",
+                    "Model_B",
+                    "skill_cmap",
+                    "diff_cmap",
+                    "skill_vmin",
+                    "skill_vmax",
+                    "diff_vmin",
+                    "diff_vmax",
+                ],
+                "Value": [
+                    metric,
+                    target_dates,
+                    model_names[0],
+                    model_names[1],
+                    skill_cmap,
+                    diff_cmap,
+                    -1,
+                    1,
+                    -0.5,
+                    0.5,
+                ]
+            })
+
+            metadata_df.to_excel(
+                writer,
+                sheet_name="metric_diff_metadata",
+                index=False
+            )
+
+        print(
+            f"Source data appended to: "
+            f"{source_data_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
     if save_fig:
-        outfile = os.path.join('viz', 'pbc',
-                               f"{metric}_{target_dates}.pdf")
+        outfile = os.path.join('viz', 'pbc', f"{metric}_{target_dates}.pdf")
         plt.savefig(outfile, dpi=100, bbox_inches='tight')
         print(f"Saved: {outfile}")
+        plt.savefig(outfile.replace(".pdf", ".eps"), dpi=100, bbox_inches='tight')
 
     if show_fig:
         plt.show()
@@ -2403,16 +3033,24 @@ def plot_metric_diff_grid_6x3(model_names,
 
 
 
-def plot_seasonal_rpss_grouped_bar(all_daily_rps,
-                                    model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
-                                    gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
-                                    horizons=[19, 26],
-                                    target_dates='std_test',
-                                    n_boot=5000,
-                                    seed=42,
-                                    show_fig=True,
-                                    save_fig=False,
-                                    verbose=False):
+
+
+
+def plot_seasonal_rpss_grouped_bar(
+    all_daily_rps,
+    model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
+    gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
+    horizons=[19, 26],
+    target_dates='std_test',
+    n_boot=5000,
+    seed=42,
+    show_fig=True,
+    save_fig=False,
+    source_data=False,
+    source_data_filename="fig_s1-seasonal_rpss.xlsx",
+    source_data_sheet_prefix="Fig_s1",
+    verbose=False,
+):
 
     season_map = {
         12: 'DJF', 1: 'DJF', 2: 'DJF',
@@ -2420,6 +3058,7 @@ def plot_seasonal_rpss_grouped_bar(all_daily_rps,
         6: 'JJA', 7: 'JJA', 8: 'JJA',
         9: 'SON', 10: 'SON', 11: 'SON'
     }
+
     seasons = ['DJF', 'MAM', 'JJA', 'SON']
 
     width = 0.25
@@ -2427,151 +3066,384 @@ def plot_seasonal_rpss_grouped_bar(all_daily_rps,
     n_vars = len(gt_ids)
     n_horizons = len(horizons)
 
-    fig, axes = plt.subplots(2, 2, figsize=(18, 12), constrained_layout=True)
+    fig, axes = plt.subplots(
+        2,
+        2,
+        figsize=(18, 12),
+        constrained_layout=True
+    )
+
     axes = axes.flatten()
 
+    # ----------------------------------------------------------
     # Aggregate RPSS and store raw daily values for bootstrap
-    agg_rpss = {season: {var: {h: {m: np.nan for m in model_names} for h in horizons} for var in gt_ids} for season in seasons}
-    agg_rpss_raw = {season: {var: {h: {m: [] for m in model_names} for h in horizons} for var in gt_ids} for season in seasons}
+    # ----------------------------------------------------------
+    agg_rpss = {
+        season: {
+            var: {
+                h: {
+                    m: np.nan
+                    for m in model_names
+                }
+                for h in horizons
+            }
+            for var in gt_ids
+        }
+        for season in seasons
+    }
+
+    agg_rpss_raw = {
+        season: {
+            var: {
+                h: {
+                    m: []
+                    for m in model_names
+                }
+                for h in horizons
+            }
+            for var in gt_ids
+        }
+        for season in seasons
+    }
+
+    # Store climatology separately because it is used for the
+    # RPSS calculation and significance testing.
+    agg_rpss_raw_climatology = {
+        season: {
+            var: {
+                h: []
+                for h in horizons
+            }
+            for var in gt_ids
+        }
+        for season in seasons
+    }
 
     for task_key, ds in all_daily_rps.items():
+
         var, horizon_str = task_key.split('_')
         horizon = int(horizon_str)
+
         if var not in gt_ids or horizon not in horizons:
             continue
 
-        months = pd.DatetimeIndex(ds['time'].values).month
-        ds_season = [season_map[m] for m in months]
+        months = pd.DatetimeIndex(
+            ds['time'].values
+        ).month
+
+        ds_season = [
+            season_map[m]
+            for m in months
+        ]
 
         for season in seasons:
-            mask = np.array(ds_season) == season
+
+            mask = np.array(
+                ds_season
+            ) == season
+
             clim = ds['climatology'].values[mask]
-            agg_rpss_raw[season][var][horizon]["climatology"] = clim
+
+            # Store climatology for possible source-data use
+            agg_rpss_raw_climatology[
+                season
+            ][var][horizon] = clim
+
             for model in model_names:
+
                 if model not in ds.data_vars:
                     continue
+
                 data = ds[model].values
                 vals = data[mask]
-                vals = vals[~np.isnan(vals)]
-                if len(vals) > 0:
-                    agg_rpss[season][var][horizon][model] = 1-np.mean(vals)/np.mean(clim)
-                    agg_rpss_raw[season][var][horizon][model] = vals
 
-    # Determine whether the target model (last in model_names) significantly
-    # improves over all baselines for each season/task.
+                vals = vals[
+                    ~np.isnan(vals)
+                ]
+
+                if len(vals) > 0:
+
+                    agg_rpss[
+                        season
+                    ][var][horizon][model] = (
+                        1
+                        - np.mean(vals)
+                        / np.mean(clim)
+                    )
+
+                    agg_rpss_raw[
+                        season
+                    ][var][horizon][model] = vals
+
+    # ----------------------------------------------------------
+    # Determine whether target model significantly improves
+    # over all baselines
+    # ----------------------------------------------------------
     target_model = model_names[-1]
+
     target_all_significant = {
         season: {
-            var: {h: False for h in horizons}
+            var: {
+                h: False
+                for h in horizons
+            }
             for var in gt_ids
         }
         for season in seasons
     }
 
     for season in seasons:
+
         for var in gt_ids:
+
             for horizon in horizons:
+
                 target_vals = np.asarray(
-                    agg_rpss_raw[season][var][horizon].get(target_model, [])
+                    agg_rpss_raw[
+                        season
+                    ][var][horizon].get(
+                        target_model,
+                        []
+                    )
                 )
+
                 if target_vals.size == 0:
                     continue
-                
+
                 clim_vals = np.asarray(
-                    agg_rpss_raw[season][var][horizon].get("climatology", [])
+                    agg_rpss_raw_climatology[
+                        season
+                    ][var][horizon]
                 )
 
                 all_significant = True
+
                 for baseline_model in model_names:
+
                     if baseline_model == target_model:
                         continue
 
                     baseline_vals = np.asarray(
-                        agg_rpss_raw[season][var][horizon].get(baseline_model, [])
+                        agg_rpss_raw[
+                            season
+                        ][var][horizon].get(
+                            baseline_model,
+                            []
+                        )
                     )
+
                     if baseline_vals.size == 0:
+
                         all_significant = False
                         break
 
-                    n = min(target_vals.size, baseline_vals.size)
+                    n = min(
+                        target_vals.size,
+                        baseline_vals.size
+                    )
+
                     if n == 0:
+
                         all_significant = False
                         break
 
                     target_aligned = target_vals[:n]
                     baseline_aligned = baseline_vals[:n]
                     clim_aligned = clim_vals[:n]
-                    mask = (~np.isnan(target_aligned)) & (~np.isnan(baseline_aligned)) & (~np.isnan(clim_aligned))
+
+                    mask = (
+                        ~np.isnan(target_aligned)
+                        & ~np.isnan(baseline_aligned)
+                        & ~np.isnan(clim_aligned)
+                    )
+
                     if not np.any(mask):
+
                         all_significant = False
                         break
 
                     lower_cb = lower_confidence_bound(
-                        baseline_aligned[mask] - target_aligned[mask],
+                        baseline_aligned[mask]
+                        - target_aligned[mask],
                         clim=clim_aligned[mask],
                         n_boot=n_boot,
                         seed=seed,
                     )
+
                     if verbose:
-                        printf(
-                            f"Season {season} | {var}_{horizon} | "
-                            f"{target_model} - {baseline_model} RPSS confidence bound: {lower_cb}"
+
+                        print(
+                            f"Season {season} | "
+                            f"{var}_{horizon} | "
+                            f"{target_model} - "
+                            f"{baseline_model} RPSS "
+                            f"confidence bound: {lower_cb}"
                         )
+
                     if lower_cb <= 0:
+
                         all_significant = False
                         break
 
-                target_all_significant[season][var][horizon] = all_significant
+                target_all_significant[
+                    season
+                ][var][horizon] = all_significant
 
+    # ----------------------------------------------------------
     # Plotting
+    # ----------------------------------------------------------
     for i, season in enumerate(seasons):
+
         ax = axes[i]
 
         group_gap = 0.75
         week_gap = 0.3
-        group_width = n_horizons * n_models * width + group_gap
-        x_base = np.arange(n_vars) * group_width
 
-        # Bars (hatch target bar if significantly improved over all baselines)
+        group_width = (
+            n_horizons
+            * n_models
+            * width
+            + group_gap
+        )
+
+        x_base = (
+            np.arange(n_vars)
+            * group_width
+        )
+
+        # ------------------------------------------------------
+        # Bars
+        # ------------------------------------------------------
         for vi, var in enumerate(gt_ids):
+
             for hi, horizon in enumerate(horizons):
-                offset = hi * (n_models * width + week_gap)
+
+                offset = (
+                    hi
+                    * (
+                        n_models * width
+                        + week_gap
+                    )
+                )
+
                 for mi, model in enumerate(model_names):
+
                     if verbose and mi == 0:
-                        printf(f"Task {var}_{horizon} for {target_dates} season {season} has {len(agg_rpss_raw[season][var][horizon][model])} target dates")
-                    xpos = x_base[vi] + offset + mi * width
-                    val = agg_rpss[season][var][horizon][model]
+
+                        print(
+                            f"Task {var}_{horizon} "
+                            f"for {target_dates} "
+                            f"season {season} has "
+                            f"{len(agg_rpss_raw[season][var][horizon][model])} "
+                            f"target dates"
+                        )
+
+                    xpos = (
+                        x_base[vi]
+                        + offset
+                        + mi * width
+                    )
+
+                    val = agg_rpss[
+                        season
+                    ][var][horizon][model]
+
                     bars = ax.bar(
                         xpos,
                         val,
                         width,
-                        color=model_colors.get(model, 'gray'),
-                        label=model.capitalize().replace('_', ' ') if (vi == 0 and hi == 0) else None,
+                        color=model_colors.get(
+                            model,
+                            'gray'
+                        ),
+                        label=(
+                            model.capitalize().replace(
+                                '_',
+                                ' '
+                            )
+                            if (
+                                vi == 0
+                                and hi == 0
+                            )
+                            else None
+                        ),
                     )
-                    if model == target_model and target_all_significant[season][var][horizon]:
+
+                    if (
+                        model == target_model
+                        and target_all_significant[
+                            season
+                        ][var][horizon]
+                    ):
+
                         for bar in bars:
                             bar.set_hatch("x")
 
+        # ------------------------------------------------------
         # Week-level x-axis labels
+        # ------------------------------------------------------
         week_centers = []
         week_labels = []
-        for vi in range(n_vars):
-            for hi, horizon in enumerate(horizons):
-                center = x_base[vi] + hi * (n_models * width + week_gap) + (n_models * width)/2 - width/2
-                week_centers.append(center)
-                week_labels.append(horizon_names[horizon])
-        ax.set_xticks(week_centers)
-        ax.set_xticklabels(week_labels, fontsize=20)#, fontweight='bold', rotation=0)
 
-        # Variable labels (centered under both weeks)
-        pair_centers = [x_base[vi] + group_width/2 - width/2 for vi in range(n_vars)]
-        var_labels = [gt_id_names[g] for g in gt_ids]
-        for xc, var in zip(pair_centers, var_labels):
-            var = f"{var}\n" if i in [0,1] else var
+        for vi in range(n_vars):
+
+            for hi, horizon in enumerate(horizons):
+
+                center = (
+                    x_base[vi]
+                    + hi
+                    * (
+                        n_models * width
+                        + week_gap
+                    )
+                    + (
+                        n_models * width
+                    ) / 2
+                    - width / 2
+                )
+
+                week_centers.append(center)
+                week_labels.append(
+                    horizon_names[horizon]
+                )
+
+        ax.set_xticks(week_centers)
+
+        ax.set_xticklabels(
+            week_labels,
+            fontsize=20
+        )
+
+        # ------------------------------------------------------
+        # Variable labels
+        # ------------------------------------------------------
+        pair_centers = [
+            x_base[vi]
+            + group_width / 2
+            - width / 2
+            for vi in range(n_vars)
+        ]
+
+        var_labels = [
+            gt_id_names[g]
+            for g in gt_ids
+        ]
+
+        for xc, var in zip(
+            pair_centers,
+            var_labels
+        ):
+
+            var_label = (
+                f"{var}\n"
+                if i in [0, 1]
+                else var
+            )
+
             ax.text(
-                xc-0.2,
+                xc - 0.2,
                 -0.12,
-                var,
+                var_label,
                 ha='center',
                 va='top',
                 fontsize=20,
@@ -2579,42 +3451,319 @@ def plot_seasonal_rpss_grouped_bar(all_daily_rps,
                 transform=ax.get_xaxis_transform()
             )
 
-        ax.set_title(season_names[season], fontsize=24, fontweight='bold')
-        ax.axhline(0, color='gray', linestyle='--', linewidth=1.2, alpha=0.7)
-        ax.grid(axis='y', linestyle='--', alpha=0.4)
-        ax.set_ylim(-0.3, 0.3)
-        ax.tick_params(axis='y', labelsize=18)
-
-    # Shared Y-axis label on the left of first column
-    fig.text(-0.01, 0.5, 'Ranked probability skill score (RPSS)',
-             va='center', ha='center', rotation='vertical', fontsize=26, fontweight='bold')
-
-    # Legend
-    handles, labels = [], []
-    for model in model_names:
-        handles.append(plt.Rectangle((0,0),1,1, color=model_colors.get(model, 'gray')))
-        labels.append(all_model_names[model])
-    fig.legend(handles, labels, 
-               loc='upper center', 
-               ncol=len(model_names), 
-               fontsize=20, 
-               frameon=False, 
-               bbox_to_anchor=(0.5, 1.1))
-
-    plt.subplots_adjust(hspace=0.4, left=0.08)
-
-    if save_fig:
-        outfile = os.path.join(
-            OUT_DIR,
-            f"rpss_by_season_{target_dates}.pdf"
+        ax.set_title(
+            season_names[season],
+            fontsize=24,
+            fontweight='bold'
         )
+
+        ax.axhline(
+            0,
+            color='gray',
+            linestyle='--',
+            linewidth=1.2,
+            alpha=0.7
+        )
+
+        ax.grid(
+            axis='y',
+            linestyle='--',
+            alpha=0.4
+        )
+
+        ax.set_ylim(
+            -0.3,
+            0.3
+        )
+
+        ax.tick_params(
+            axis='y',
+            labelsize=18
+        )
+
+    # ----------------------------------------------------------
+    # Shared Y-axis label
+    # ----------------------------------------------------------
+    fig.text(
+        -0.01,
+        0.5,
+        'Ranked probability skill score (RPSS)',
+        va='center',
+        ha='center',
+        rotation='vertical',
+        fontsize=26,
+        fontweight='bold'
+    )
+
+    # ----------------------------------------------------------
+    # Legend
+    # ----------------------------------------------------------
+    handles = []
+    labels = []
+
+    for model in model_names:
+
+        handles.append(
+            plt.Rectangle(
+                (0, 0),
+                1,
+                1,
+                color=model_colors.get(
+                    model,
+                    'gray'
+                )
+            )
+        )
+
+        labels.append(
+            all_model_names[model]
+        )
+
+    fig.legend(
+        handles,
+        labels,
+        loc='upper center',
+        ncol=len(model_names),
+        fontsize=20,
+        frameon=False,
+        bbox_to_anchor=(0.5, 1.1)
+    )
+
+    plt.subplots_adjust(
+        hspace=0.4,
+        left=0.08
+    )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
+    if save_fig:
+        outfile = os.path.join(OUT_DIR, f"rpss_by_season_{target_dates}.pdf")
         plt.savefig(outfile, dpi=100, bbox_inches='tight')
         print(f"Figure saved: {outfile}")
+        plt.savefig(outfile.replace('.pdf', '.eps'), dpi=100, bbox_inches='tight')
 
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename
+        )
+
+        os.makedirs(
+            SRC_DATA_DIR,
+            exist_ok=True
+        )
+
+        # ------------------------------------------------------
+        # Build tidy source-data table containing every plotted
+        # bar.
+        # ------------------------------------------------------
+        source_rows = []
+
+        for season in seasons:
+
+            for var in gt_ids:
+
+                for horizon in horizons:
+
+                    for model in model_names:
+
+                        raw_values = np.asarray(
+                            agg_rpss_raw[
+                                season
+                            ][var][horizon].get(
+                                model,
+                                []
+                            )
+                        )
+
+                        source_rows.append(
+                            {
+                                "Season": season,
+                                "Variable": gt_id_names[var],
+                                "Variable_ID": var,
+                                "Horizon": horizon,
+                                "Horizon_Label": horizon_names[horizon],
+                                "Model": model,
+                                "Model_Label": all_model_names.get(
+                                    model,
+                                    model
+                                ),
+                                "RPSS": agg_rpss[
+                                    season
+                                ][var][horizon].get(
+                                    model,
+                                    np.nan
+                                ),
+                                "Significant_All_Baselines": (
+                                    target_all_significant[
+                                        season
+                                    ][var][horizon]
+                                    if model == target_model
+                                    else False
+                                ),
+                                "N_Raw_Values": len(raw_values),
+                            }
+                        )
+
+        source_df = pd.DataFrame(
+            source_rows
+        )
+
+        # ------------------------------------------------------
+        # Significance summary
+        # ------------------------------------------------------
+        significance_rows = []
+
+        for season in seasons:
+
+            for var in gt_ids:
+
+                for horizon in horizons:
+
+                    significance_rows.append(
+                        {
+                            "Season": season,
+                            "Variable": gt_id_names[var],
+                            "Variable_ID": var,
+                            "Horizon": horizon,
+                            "Horizon_Label": horizon_names[horizon],
+                            "Target_Model": target_model,
+                            "Significant_All_Baselines": (
+                                target_all_significant[
+                                    season
+                                ][var][horizon]
+                            ),
+                            "N_Bootstrap": n_boot,
+                            "Random_Seed": seed,
+                        }
+                    )
+
+        significance_df = pd.DataFrame(
+            significance_rows
+        )
+
+        # ------------------------------------------------------
+        # Optional summary of the raw sample sizes.
+        # This makes it easy to understand how many daily values
+        # contributed to each plotted RPSS value.
+        # ------------------------------------------------------
+        sample_rows = []
+
+        for season in seasons:
+
+            for var in gt_ids:
+
+                for horizon in horizons:
+
+                    clim_values = np.asarray(
+                        agg_rpss_raw_climatology[
+                            season
+                        ][var][horizon]
+                    )
+
+                    for model in model_names:
+
+                        values = np.asarray(
+                            agg_rpss_raw[
+                                season
+                            ][var][horizon].get(
+                                model,
+                                []
+                            )
+                        )
+
+                        sample_rows.append(
+                            {
+                                "Season": season,
+                                "Variable": gt_id_names[var],
+                                "Variable_ID": var,
+                                "Horizon": horizon,
+                                "Horizon_Label": horizon_names[horizon],
+                                "Model": model,
+                                "Model_Label": all_model_names.get(
+                                    model,
+                                    model
+                                ),
+                                "N_Model_Values": len(values),
+                                "N_Climatology_Values": len(clim_values),
+                            }
+                        )
+
+        sample_df = pd.DataFrame(
+            sample_rows
+        )
+
+        # ------------------------------------------------------
+        # Append to existing workbook if it exists.
+        #
+        # This preserves source data written by other subfigures.
+        # ------------------------------------------------------
+        if os.path.exists(fig_filename):
+
+            writer_mode = "a"
+
+        else:
+
+            writer_mode = "w"
+
+        with pd.ExcelWriter(
+            fig_filename,
+            engine="openpyxl",
+            mode=writer_mode,
+            if_sheet_exists=(
+                "replace"
+                if writer_mode == "a"
+                else None
+            ),
+        ) as writer:
+
+            source_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_values"
+                )[:31],
+                index=False
+            )
+
+            significance_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_significance"
+                )[:31],
+                index=False
+            )
+
+            sample_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_samples"
+                )[:31],
+                index=False
+            )
+
+        print(
+            f"Source data saved: {fig_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Display / close
+    # ----------------------------------------------------------
     if show_fig:
+
         plt.show()
+
     else:
+
         plt.close(fig)
+
+
+
+
 
 
 def get_regional_rpss(model_names=['ecmwf', 'pbc_ecmwf', 'msn', 'pbc_msn', 'duet'],
@@ -2806,35 +3955,54 @@ def plot_bias_maps_4x3(model_names,
 
 
 
-def plot_rpss_by_region_all(metrics_dict,
-                           model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
-                           gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
-                           horizons=[19, 26],
-                           target_dates="std_test",
-                           regions='all',
-                           show_fig=True,
-                           save_fig=True,
-                           n_boot=5000,
-                           seed=42,
-                           verbose=False):
+def plot_rpss_by_region_all(
+    metrics_dict,
+    model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
+    gt_ids=['era5-tas', 'era5-pr', 'era5-mslp'],
+    horizons=[19, 26],
+    target_dates="std_test",
+    regions='all',
+    show_fig=True,
+    save_fig=True,
+    n_boot=5000,
+    seed=42,
+    source_data=False,
+    source_data_filename="fig_s2-regional_rpss.xlsx",
+    source_data_sheet_prefix="Fig_s2",
+    verbose=False
+):
 
     """
     Regional RPSS bar plotting using precomputed regional time series.
 
     metrics_dict: output of get_daily_rpss
                   {task: xr.Dataset(region, time)}
+
+    Source data:
+        <prefix>_values
+            One row per plotted bar.
+
+        <prefix>_significance
+            Significance/hatching information for the target model.
+
+        <prefix>_regions
+            Region names and bounding boxes used in the figure.
     """
 
     import matplotlib.patches as patches
     import matplotlib.pyplot as plt
     import numpy as np
     import os
+    import pandas as pd
     from matplotlib.ticker import MultipleLocator
 
     alpha = 0.05
 
+    # ----------------------------------------------------------
+    # Regions
+    # ----------------------------------------------------------
     if regions == 'all':
-        regions = [r for r in dic_regions.keys()]
+        regions = list(dic_regions.keys())
 
     row_ylims = {
         'era5-tas': (-1, 0.4),
@@ -2842,9 +4010,16 @@ def plot_rpss_by_region_all(metrics_dict,
         'era5-mslp': (-0.8, 0.3),
     }
 
-    region_labels = [region_names[r] for r in regions]
-    x = np.arange(len(region_labels))
-    width = 0.26 #0.18
+    region_labels = [
+        region_names[r]
+        for r in regions
+    ]
+
+    x = np.arange(
+        len(region_labels)
+    )
+
+    width = 0.26
 
     fig, axes = plt.subplots(
         nrows=len(gt_ids),
@@ -2854,149 +4029,470 @@ def plot_rpss_by_region_all(metrics_dict,
         sharey=False
     )
 
+    # Make axes consistently 2-D even if only one row/column
+    axes = np.asarray(axes)
+
+    if axes.ndim == 1:
+
+        if len(gt_ids) == 1:
+            axes = axes.reshape(1, -1)
+
+        elif len(horizons) == 1:
+            axes = axes.reshape(-1, 1)
+
+    # ----------------------------------------------------------
+    # Source-data storage
+    # ----------------------------------------------------------
+    source_value_rows = []
+    significance_rows = []
+
+    # ----------------------------------------------------------
+    # Main plotting loop
+    # ----------------------------------------------------------
     for row, gt_id in enumerate(gt_ids):
 
         if gt_id in row_ylims:
-            ymin, ymax = row_ylims[gt_id]
-            tick_spacing = 0.1
-            major_locator = MultipleLocator(tick_spacing)
 
-            # Set consistent ylim, ticks, and grid for all axes in this row
+            ymin, ymax = row_ylims[gt_id]
+
+            tick_spacing = 0.1
+
+            major_locator = MultipleLocator(
+                tick_spacing
+            )
+
+            # Set consistent ylim, ticks, and grid
+            # for all axes in this row.
             for c in range(len(horizons)):
-                axes[row, c].set_ylim(ymin, ymax)
-                axes[row, c].yaxis.set_major_locator(major_locator)
-                axes[row, c].grid(axis='y', linestyle='--', alpha=0.4)
+
+                axes[row, c].set_ylim(
+                    ymin,
+                    ymax
+                )
+
+                axes[row, c].yaxis.set_major_locator(
+                    major_locator
+                )
+
+                axes[row, c].grid(
+                    axis='y',
+                    linestyle='--',
+                    alpha=0.4
+                )
 
         for col, horizon in enumerate(horizons):
 
             ax = axes[row, col]
+
             task = f"{gt_id}_{horizon}"
 
             if task not in metrics_dict:
+
                 if verbose:
-                    print(f"Warning: task {task} not found in metrics_dict")
+                    print(
+                        f"Warning: task {task} "
+                        f"not found in metrics_dict"
+                    )
+
                 continue
 
             ds = metrics_dict[task]
 
             if "region" not in ds.dims:
-                raise ValueError(f"Dataset for task {task} has no 'region' dimension")
 
-            results = {m: [] for m in model_names}
+                raise ValueError(
+                    f"Dataset for task {task} "
+                    f"has no 'region' dimension"
+                )
+
+            results = {
+                m: []
+                for m in model_names
+            }
+
             target_model = model_names[-1]
+
             target_all_significant = []
             target_some_significant = []
 
+            # --------------------------------------------------
+            # Calculate regional RPSS
+            # --------------------------------------------------
             for region in regions:
 
                 if region not in ds.region.values:
+
                     if verbose:
-                        print(f"Warning: region '{region}' not found in task {task}")
+                        print(
+                            f"Warning: region '{region}' "
+                            f"not found in task {task}"
+                        )
+
                     for m in model_names:
-                        results[m].append(np.nan)
-                    target_all_significant.append(False)
-                    target_some_significant.append(False)
+                        results[m].append(
+                            np.nan
+                        )
+
+                    target_all_significant.append(
+                        False
+                    )
+
+                    target_some_significant.append(
+                        False
+                    )
+
+                    # Preserve one source-data row per model
+                    for model in model_names:
+
+                        source_value_rows.append(
+                            {
+                                "Task": task,
+                                "Variable_ID": gt_id,
+                                "Variable": gt_id_names.get(
+                                    gt_id,
+                                    gt_id
+                                ),
+                                "Horizon": horizon,
+                                "Horizon_Label": horizon_names.get(
+                                    horizon,
+                                    str(horizon)
+                                ),
+                                "Region_ID": region,
+                                "Region": region_names.get(
+                                    region,
+                                    region
+                                ),
+                                "Model": model,
+                                "Model_Label": all_model_names.get(
+                                    model,
+                                    model
+                                ),
+                                "RPSS": np.nan,
+                                "Region_Found": False,
+                            }
+                        )
+
+                    significance_rows.append(
+                        {
+                            "Task": task,
+                            "Variable_ID": gt_id,
+                            "Variable": gt_id_names.get(
+                                gt_id,
+                                gt_id
+                            ),
+                            "Horizon": horizon,
+                            "Horizon_Label": horizon_names.get(
+                                horizon,
+                                str(horizon)
+                            ),
+                            "Region_ID": region,
+                            "Region": region_names.get(
+                                region,
+                                region
+                            ),
+                            "Target_Model": target_model,
+                            "Significant_All_Baselines": False,
+                            "Significant_Some_Baseline": False,
+                        }
+                    )
+
                     continue
 
-                ds_region = ds.sel(region=region)
+                ds_region = ds.sel(
+                    region=region
+                )
 
-                clim = ds_region["climatology"].values
-                for m in model_names:
+                clim = ds_region[
+                    "climatology"
+                ].values
 
-                    if m not in ds_region:
-                        results[m].append(np.nan)
-                        continue
+                # --------------------------------------------------
+                # Calculate RPSS for each model
+                # --------------------------------------------------
+                for model in model_names:
 
-                    values = ds_region[m].values
-                    mask = ~np.isnan(values) & ~np.isnan(clim)
-                    values = values[mask]
-                    masked_clim = clim[mask]
+                    if model not in ds_region:
 
-                    if len(values) == 0:
-                        results[m].append(np.nan)
-                        continue
+                        results[model].append(
+                            np.nan
+                        )
 
-                    mean_val = 1- float(np.mean(values)/np.mean(masked_clim))
-                    results[m].append(mean_val)
+                        rpss_value = np.nan
 
-                # Test significance of target model against all baselines
+                    else:
+
+                        values = ds_region[
+                            model
+                        ].values
+
+                        mask = (
+                            ~np.isnan(values)
+                            & ~np.isnan(clim)
+                        )
+
+                        values_masked = values[
+                            mask
+                        ]
+
+                        masked_clim = clim[
+                            mask
+                        ]
+
+                        if len(values_masked) == 0:
+
+                            rpss_value = np.nan
+
+                        else:
+
+                            rpss_value = (
+                                1
+                                - float(
+                                    np.mean(
+                                        values_masked
+                                    )
+                                    / np.mean(
+                                        masked_clim
+                                    )
+                                )
+                            )
+
+                        results[model].append(
+                            rpss_value
+                        )
+
+                    # ----------------------------------------------
+                    # Source data for the plotted bar
+                    # ----------------------------------------------
+                    source_value_rows.append(
+                        {
+                            "Task": task,
+                            "Variable_ID": gt_id,
+                            "Variable": gt_id_names.get(
+                                gt_id,
+                                gt_id
+                            ),
+                            "Horizon": horizon,
+                            "Horizon_Label": horizon_names.get(
+                                horizon,
+                                str(horizon)
+                            ),
+                            "Region_ID": region,
+                            "Region": region_names.get(
+                                region,
+                                region
+                            ),
+                            "Model": model,
+                            "Model_Label": all_model_names.get(
+                                model,
+                                model
+                            ),
+                            "RPSS": rpss_value,
+                            "Region_Found": True,
+                        }
+                    )
+
+                # --------------------------------------------------
+                # Test significance of target model against
+                # all baseline models
+                # --------------------------------------------------
                 if target_model not in ds_region:
-                    target_all_significant.append(False)
-                    target_some_significant.append(False)
+
+                    target_all_significant.append(
+                        False
+                    )
+
+                    target_some_significant.append(
+                        False
+                    )
+
+                    significance_rows.append(
+                        {
+                            "Task": task,
+                            "Variable_ID": gt_id,
+                            "Variable": gt_id_names.get(
+                                gt_id,
+                                gt_id
+                            ),
+                            "Horizon": horizon,
+                            "Horizon_Label": horizon_names.get(
+                                horizon,
+                                str(horizon)
+                            ),
+                            "Region_ID": region,
+                            "Region": region_names.get(
+                                region,
+                                region
+                            ),
+                            "Target_Model": target_model,
+                            "Significant_All_Baselines": False,
+                            "Significant_Some_Baseline": False,
+                        }
+                    )
+
                     continue
 
-                target_vals = ds_region[target_model].values
+                target_vals = ds_region[
+                    target_model
+                ].values
+
                 all_significant = True
                 some_significant = False
 
                 for baseline_model in model_names:
+
                     if baseline_model == target_model:
                         continue
+
                     if baseline_model not in ds_region:
+
                         all_significant = False
                         some_significant = False
                         break
 
-                    baseline_vals = ds_region[baseline_model].values
-                    mask = (~np.isnan(target_vals)) & (~np.isnan(baseline_vals)) & (~np.isnan(clim))
+                    baseline_vals = ds_region[
+                        baseline_model
+                    ].values
+
+                    mask = (
+                        ~np.isnan(target_vals)
+                        & ~np.isnan(baseline_vals)
+                        & ~np.isnan(clim)
+                    )
+
                     if not np.any(mask):
+
                         all_significant = False
                         some_significant = False
                         break
 
                     lower_cb = lower_confidence_bound(
-                        baseline_vals[mask] - target_vals[mask],
-                        clim = clim[mask],
+                        baseline_vals[mask]
+                        - target_vals[mask],
+                        clim=clim[mask],
                         n_boot=n_boot,
                         seed=seed,
                         verbose=verbose
                     )
+
                     if verbose:
-                        printf(
-                            f"  {task} | {region} | {target_model} - {baseline_model} "
-                            f"RPSS confidence bound: {lower_cb}"
+
+                        print(
+                            f"  {task} | {region} | "
+                            f"{target_model} - "
+                            f"{baseline_model} "
+                            f"RPSS confidence bound: "
+                            f"{lower_cb}"
                         )
+
                     if lower_cb <= 0:
+
                         all_significant = False
+
                     else:
+
                         some_significant = True
 
-                target_all_significant.append(all_significant)
-                target_some_significant.append(some_significant)
+                target_all_significant.append(
+                    all_significant
+                )
 
-            # -------------------------
+                target_some_significant.append(
+                    some_significant
+                )
+
+                # ----------------------------------------------
+                # Source significance data
+                # ----------------------------------------------
+                significance_rows.append(
+                    {
+                        "Task": task,
+                        "Variable_ID": gt_id,
+                        "Variable": gt_id_names.get(
+                            gt_id,
+                            gt_id
+                        ),
+                        "Horizon": horizon,
+                        "Horizon_Label": horizon_names.get(
+                            horizon,
+                            str(horizon)
+                        ),
+                        "Region_ID": region,
+                        "Region": region_names.get(
+                            region,
+                            region
+                        ),
+                        "Target_Model": target_model,
+                        "Significant_All_Baselines": all_significant,
+                        "Significant_Some_Baseline": some_significant,
+                    }
+                )
+
+            # --------------------------------------------------
             # Plot bars
-            # -------------------------
+            # --------------------------------------------------
             for i, model in enumerate(model_names):
+
                 bars = ax.bar(
                     x + (i - 1.5) * width,
                     results[model],
                     width,
-                    label=all_model_names.get(model, model),
-                    color=model_colors.get(model, 'gray'),
+                    label=all_model_names.get(
+                        model,
+                        model
+                    ),
+                    color=model_colors.get(
+                        model,
+                        'gray'
+                    ),
                 )
+
                 if model == target_model:
+
                     for j, bar in enumerate(bars):
+
                         if target_all_significant[j]:
+
                             bar.set_hatch("xx")
+
                         elif target_some_significant[j]:
+
                             bar.set_hatch("//")
 
-            
+            # --------------------------------------------------
+            # Titles
+            # --------------------------------------------------
             if row == 0:
+
                 ax.set_title(
-                    horizon_names[horizon].replace('week', 'Week'),
+                    horizon_names[horizon].replace(
+                        'week',
+                        'Week'
+                    ),
                     fontsize=22,
                     fontweight='bold'
                 )
 
             if col == 0:
-                ax.tick_params(axis='y', labelsize=14)
-                plt.setp(ax.get_yticklabels(), fontweight='bold')
+
+                ax.tick_params(
+                    axis='y',
+                    labelsize=14
+                )
+
+                plt.setp(
+                    ax.get_yticklabels(),
+                    fontweight='bold'
+                )
+
             else:
-                ax.tick_params(axis='y', labelleft=False)
-                
+
+                ax.tick_params(
+                    axis='y',
+                    labelleft=False
+                )
+
             if col == 1:
+
                 ax.set_ylabel(
                     gt_id_names[gt_id],
                     fontsize=22,
@@ -3004,11 +4500,18 @@ def plot_rpss_by_region_all(metrics_dict,
                     rotation=270,
                     labelpad=30
                 )
-                ax.yaxis.set_label_position("right")   
 
+                ax.yaxis.set_label_position(
+                    "right"
+                )
+
+    # ----------------------------------------------------------
     # X labels
+    # ----------------------------------------------------------
     for ax in axes[-1, :]:
+
         ax.set_xticks(x)
+
         ax.set_xticklabels(
             region_labels,
             rotation=90,
@@ -3021,15 +4524,33 @@ def plot_rpss_by_region_all(metrics_dict,
         "Ranked probability skill score (RPSS)",
         fontsize=22,
         fontweight='bold',
-        x=0.07 #0.05
+        x=0.07
     )
 
-    # Ensure legend colors are unhatched
+    # ----------------------------------------------------------
+    # Legend
+    # ----------------------------------------------------------
     handles = [
-        plt.Rectangle((0, 0), 1, 1, facecolor=model_colors.get(model, 'gray'))
+        plt.Rectangle(
+            (0, 0),
+            1,
+            1,
+            facecolor=model_colors.get(
+                model,
+                'gray'
+            )
+        )
         for model in model_names
     ]
-    labels = [all_model_names.get(model, model) for model in model_names]
+
+    labels = [
+        all_model_names.get(
+            model,
+            model
+        )
+        for model in model_names
+    ]
+
     fig.legend(
         handles,
         labels,
@@ -3039,31 +4560,74 @@ def plot_rpss_by_region_all(metrics_dict,
         frameon=False
     )
 
-    # -------------------------
+    # ----------------------------------------------------------
     # Region table
-    # -------------------------
-    def format_bbox(lat_min, lat_max, lon_min, lon_max):
-        def lat_str(x): return f"{abs(x)}°{'N' if x >= 0 else 'S'}"
-        def lon_str(x): return f"{abs(x)}°{'E' if x >= 0 else 'W'}"
-        return f"{lat_str(lat_min)}–{lat_str(lat_max)}, {lon_str(lon_min)}–{lon_str(lon_max)}"
+    # ----------------------------------------------------------
+    def format_bbox(
+        lat_min,
+        lat_max,
+        lon_min,
+        lon_max
+    ):
+
+        def lat_str(x):
+
+            return (
+                f"{abs(x)}°"
+                f"{'N' if x >= 0 else 'S'}"
+            )
+
+        def lon_str(x):
+
+            return (
+                f"{abs(x)}°"
+                f"{'E' if x >= 0 else 'W'}"
+            )
+
+        return (
+            f"{lat_str(lat_min)}–"
+            f"{lat_str(lat_max)}, "
+            f"{lon_str(lon_min)}–"
+            f"{lon_str(lon_max)}"
+        )
 
     all_regions = list(regions)
+
     n_rows, n_cols = 7, 4
-    table_data = [["" for _ in range(n_cols)] for _ in range(n_rows)]
+
+    table_data = [
+        ["" for _ in range(n_cols)]
+        for _ in range(n_rows)
+    ]
 
     for i, region in enumerate(all_regions):
+
         row = i % n_rows
         col = (i // n_rows) * 2
-        if col < n_cols:
-            table_data[row][col] = region_names[region]
-            table_data[row][col+1] = format_bbox(**dic_regions[region])
 
-    ax_table = fig.add_axes([0.145, -0.15, 0.86, 0.15])
+        if col < n_cols:
+
+            table_data[row][col] = (
+                region_names[region]
+            )
+
+            table_data[row][col + 1] = (
+                format_bbox(
+                    **dic_regions[region]
+                )
+            )
+
+    ax_table = fig.add_axes(
+        [0.145, -0.15, 0.86, 0.15]
+    )
+
     ax_table.axis('off')
 
     ax_table.add_patch(
         patches.Rectangle(
-            (0, 0), 0.985, 1,
+            (0, 0),
+            0.985,
+            1,
             linewidth=2,
             edgecolor='black',
             facecolor='none',
@@ -3079,29 +4643,239 @@ def plot_rpss_by_region_all(metrics_dict,
         loc='center'
     )
 
-    for (row, col), cell in tbl.get_celld().items():
+    for (row_idx, col_idx), cell in tbl.get_celld().items():
+
         cell.set_linewidth(0)
-        cell.set_height(cell.get_height() * 2.0)
-        if col in [0, 2]:
-            cell.get_text().set_fontweight('bold')
-        cell.get_text().set_fontsize(24)
 
-    plt.tight_layout(rect=[0.06, 0, 1, 0.96])
+        cell.set_height(
+            cell.get_height() * 2.0
+        )
 
+        if col_idx in [0, 2]:
+
+            cell.get_text().set_fontweight(
+                'bold'
+            )
+
+        cell.get_text().set_fontsize(
+            24
+        )
+
+    plt.tight_layout(
+        rect=[0.06, 0, 1, 0.96]
+    )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
     filename = os.path.join(
         OUT_DIR,
         f"regional_rpss_{target_dates}.pdf"
     )
 
     if save_fig:
-        plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
-        plt.savefig(filename.replace('.pdf', '.png'), dpi=300, bbox_inches='tight')
-        print(f"Figure saved: {filename}")
 
+        plt.savefig(
+            filename,
+            dpi=300,
+            transparent=True,
+            bbox_inches='tight'
+        )
+
+        plt.savefig(
+            filename.replace(
+                '.pdf',
+                '.png'
+            ),
+            dpi=300,
+            transparent=True,
+            bbox_inches='tight'
+        )
+
+        plt.savefig(
+            filename.replace(
+                '.pdf',
+                '.eps'
+            ),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        print(
+            f"Figure saved: {filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename
+        )
+
+        os.makedirs(
+            SRC_DATA_DIR,
+            exist_ok=True
+        )
+
+        # ------------------------------------------------------
+        # Values table
+        # ------------------------------------------------------
+        values_df = pd.DataFrame(
+            source_value_rows
+        )
+
+        # ------------------------------------------------------
+        # Significance table
+        # ------------------------------------------------------
+        significance_df = pd.DataFrame(
+            significance_rows
+        )
+
+        # ------------------------------------------------------
+        # Region definitions
+        # ------------------------------------------------------
+        region_rows = []
+
+        for region in regions:
+
+            bbox = dic_regions[region]
+
+            region_rows.append(
+                {
+                    "Region_ID": region,
+                    "Region": region_names.get(
+                        region,
+                        region
+                    ),
+                    "Latitude_Min": bbox["lat_min"],
+                    "Latitude_Max": bbox["lat_max"],
+                    "Longitude_Min": bbox["lon_min"],
+                    "Longitude_Max": bbox["lon_max"],
+                    "Bounding_Box": format_bbox(
+                        **bbox
+                    ),
+                }
+            )
+
+        regions_df = pd.DataFrame(
+            region_rows
+        )
+
+        # ------------------------------------------------------
+        # Metadata table
+        # ------------------------------------------------------
+        metadata_df = pd.DataFrame(
+            [
+                {
+                    "Parameter": "Target dates",
+                    "Value": target_dates
+                },
+                {
+                    "Parameter": "Target model",
+                    "Value": target_model
+                },
+                {
+                    "Parameter": "Bootstrap samples",
+                    "Value": n_boot
+                },
+                {
+                    "Parameter": "Random seed",
+                    "Value": seed
+                },
+                {
+                    "Parameter": "Models",
+                    "Value": ", ".join(model_names)
+                },
+                {
+                    "Parameter": "Variables",
+                    "Value": ", ".join(gt_ids)
+                },
+                {
+                    "Parameter": "Horizons",
+                    "Value": ", ".join(
+                        map(str, horizons)
+                    )
+                },
+            ]
+        )
+
+        # ------------------------------------------------------
+        # Append to existing workbook if present.
+        #
+        # This preserves source data from other subfigures.
+        # ------------------------------------------------------
+        if os.path.exists(fig_filename):
+
+            writer_mode = "a"
+
+        else:
+
+            writer_mode = "w"
+
+        with pd.ExcelWriter(
+            fig_filename,
+            engine="openpyxl",
+            mode=writer_mode,
+            if_sheet_exists=(
+                "replace"
+                if writer_mode == "a"
+                else None
+            ),
+        ) as writer:
+
+            values_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_values"
+                )[:31],
+                index=False
+            )
+
+            significance_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_significance"
+                )[:31],
+                index=False
+            )
+
+            regions_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_regions"
+                )[:31],
+                index=False
+            )
+
+            metadata_df.to_excel(
+                writer,
+                sheet_name=(
+                    f"{source_data_sheet_prefix}_metadata"
+                )[:31],
+                index=False
+            )
+
+        print(
+            f"Source data saved: {fig_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Display / close
+    # ----------------------------------------------------------
     if show_fig:
+
         plt.show()
+
     else:
+
         plt.close(fig)
+
+
+
+
 
 def print_improvements(scores, model_name='pbc_ecmwf_combo', baseline_models=['ecmwf', 'debiased_ecmwf']):
     """
@@ -3146,92 +4920,228 @@ def print_improvements(scores, model_name='pbc_ecmwf_combo', baseline_models=['e
         pprint(improvements[baseline])
 
 
-def plot_bias_maps_3x4(results_dict,  
-                       model_names = ["ecmwf", "debiased_ecmwf", "pbc_ecmwf_combo"],
-                          gt_id='era5-mslp',
-                          horizon=19,
-                          fs=[1, 2, 3, 4],
-                          target_dates="std_test",
-                          cmap="RdBu_r",
-                          vmin=-5,
-                          vmax=5,
-                          show_cbar=True,
-                          show_fig=True,
-                          save_fig=False):
+def plot_bias_maps_3x4(
+    results_dict,
+    model_names=["ecmwf", "debiased_ecmwf", "pbc_ecmwf_combo"],
+    gt_id='era5-mslp',
+    horizon=19,
+    fs=[1, 2, 3, 4],
+    target_dates="std_test",
+    cmap="RdBu_r",
+    vmin=-5,
+    vmax=5,
+    show_cbar=True,
+    show_fig=True,
+    save_fig=False,
+    source_data=False,
+    source_data_filename="fig_s3-bias_maps_precip.xlsx",
+    source_data_sheet_prefix="Fig_s3"
+):
     """
-    Plots bias maps by extracting the relevant dataset from results_dict 
+    Plots bias maps by extracting the relevant dataset from results_dict
     using (gt_id, horizon) as the key.
+
+    Source data
+    -----------
+    If source_data=True, an Excel workbook is created/updated containing:
+
+        <prefix>_maps
+            Spatial bias values for every model and frequency/quintile.
+
+        <prefix>_metadata
+            Figure and plotting parameters.
+
+    Each row in <prefix>_maps corresponds to one grid cell of one
+    model/frequency combination and contains latitude, longitude,
+    model, frequency, and mean bias.
     """
-    
+
+    # ----------------------------------------------------------
     # 1. Extract the specific dataset from the results dictionary
+    # ----------------------------------------------------------
     if (gt_id, horizon) not in results_dict:
-        print(f"Error: Key {(gt_id, horizon)} not found in results_dict.")
+
+        print(
+            f"Error: Key {(gt_id, horizon)} "
+            f"not found in results_dict."
+        )
+
         return
-    
-    ds = results_dict[(gt_id, horizon)]
-    
+
+    ds = results_dict[
+        (gt_id, horizon)
+    ]
+
+    # ----------------------------------------------------------
     # 2. Setup metadata and dimensions
-    measurement = gt_id.replace('era5-', '')
+    # ----------------------------------------------------------
+    measurement = gt_id.replace(
+        'era5-',
+        ''
+    )
 
-    # Filter model_names_ordered to only include those present in ds
-    # This prevents the loop from crashing if one model failed to load
-    model_names = [m for m in model_names if m in ds.model.values and m != 'gt']
+    # Filter models to those actually present
+    # in the dataset.
+    model_names = [
+        m
+        for m in model_names
+        if m in ds.model.values
+        and m != 'gt'
+    ]
 
-    # Load arid mask once if precipitation is being plotted
+    # ----------------------------------------------------------
+    # Load arid mask once if precipitation is plotted
+    # ----------------------------------------------------------
     arid_mask = None
-    if gt_id.endswith("pr"):
-        # print("Computing zero quintiles mask")
-        quintiles = xr.open_dataset("data/era5-quintiles-pr.zarr", engine="zarr").load()
-        quintiles_sel = quintiles.sel(time=get_target_dates(target_dates, horizon))
-        arid_mask = (quintiles_sel["pr"].isel(quantile=-1) == 0).any(dim="time")    
 
+    if gt_id.endswith("pr"):
+
+        quintiles = xr.open_dataset(
+            "data/era5-quintiles-pr.zarr",
+            engine="zarr"
+        ).load()
+
+        quintiles_sel = quintiles.sel(
+            time=get_target_dates(
+                target_dates,
+                horizon
+            )
+        )
+
+        arid_mask = (
+            quintiles_sel["pr"]
+            .isel(quantile=-1)
+            == 0
+        ).any(
+            dim="time"
+        )
 
     num_rows = len(model_names)
     num_cols = len(fs)
 
-    # Figure scaling logic
-    fig_x, fig_y = 3, 2.15 if show_cbar else 1.95
+    # ----------------------------------------------------------
+    # Figure scaling
+    # ----------------------------------------------------------
+    fig_x = 3
+    fig_y = (
+        2.15
+        if show_cbar
+        else 1.95
+    )
+
     fig, axes = plt.subplots(
-        num_rows, num_cols,
-        figsize=(fig_x * num_cols, fig_y * num_rows),
-        subplot_kw={"projection": ccrs.Robinson()},
+        num_rows,
+        num_cols,
+        figsize=(
+            fig_x * num_cols,
+            fig_y * num_rows
+        ),
+        subplot_kw={
+            "projection": ccrs.Robinson()
+        },
         constrained_layout=True
     )
 
-    # Ensure axes is a 2D array even for a single model
-    if num_rows == 1:
-        axes = axes[np.newaxis, :]
+    # Ensure axes is always 2D
+    if num_rows == 1 and num_cols == 1:
+
+        axes = np.asarray(
+            [[axes]]
+        )
+
+    elif num_rows == 1:
+
+        axes = axes[
+            np.newaxis,
+            :
+        ]
+
+    elif num_cols == 1:
+
+        axes = axes[
+            :,
+            np.newaxis
+        ]
 
     im = None
 
-    # -------------------------
-    # Loop over models + quintiles
-    # -------------------------
-    for i, model_name in enumerate(model_names):
-        for j, f in enumerate(fs):
-            ax = axes[i, j]
-            ax.set_global()
-            ax.coastlines(color="grey", linewidth=0.6)
-            ax.spines["geo"].set_linewidth(1.2)
+    # ----------------------------------------------------------
+    # Source-data storage
+    # ----------------------------------------------------------
+    source_data_rows = []
 
-            var_name = f"f{f}_{measurement}"
+    # ----------------------------------------------------------
+    # Loop over models + quintiles
+    # ----------------------------------------------------------
+    for i, model_name in enumerate(
+        model_names
+    ):
+
+        for j, f in enumerate(fs):
+
+            ax = axes[i, j]
+
+            ax.set_global()
+
+            ax.coastlines(
+                color="grey",
+                linewidth=0.6
+            )
+
+            ax.spines[
+                "geo"
+            ].set_linewidth(1.2)
+
+            var_name = (
+                f"f{f}_{measurement}"
+            )
 
             if var_name not in ds:
-                print(f"Missing variable {var_name} in dataset for {gt_id}")
-                continue 
 
-            # Extract prediction for this model
-            pred = ds[var_name].sel(model=model_name)
+                print(
+                    f"Missing variable {var_name} "
+                    f"in dataset for {gt_id}"
+                )
 
-            # Load ground truth 
-            gt = ds[var_name].sel(model='gt') 
-                        
-            # # Align and calculate bias
-            # pred, truth_aligned = xr.align(pred, gt_data)
-            bias = (pred - gt).mean(dim="time")
+                continue
+
+            # --------------------------------------------------
+            # Extract prediction
+            # --------------------------------------------------
+            pred = ds[
+                var_name
+            ].sel(
+                model=model_name
+            )
+
+            # --------------------------------------------------
+            # Ground truth
+            # --------------------------------------------------
+            gt = ds[
+                var_name
+            ].sel(
+                model='gt'
+            )
+
+            # --------------------------------------------------
+            # Calculate mean bias
+            # --------------------------------------------------
+            bias = (
+                pred - gt
+            ).mean(
+                dim="time"
+            )
+
+            # Apply precipitation arid mask
             if arid_mask is not None:
-                bias = bias.where(~arid_mask)
 
+                bias = bias.where(
+                    ~arid_mask
+                )
+
+            # --------------------------------------------------
+            # Plot
+            # --------------------------------------------------
             im = bias.plot(
                 ax=ax,
                 transform=ccrs.PlateCarree(),
@@ -3242,31 +5152,179 @@ def plot_bias_maps_3x4(results_dict,
                 rasterized=True
             )
 
-            # --- Row labels (Models) ---
-            if j == 0:
-                # all_model_names.get() handles pretty-printing if dict exists
-                label = all_model_names.get(model_name, model_name) if 'all_model_names' in globals() else model_name
-                ax.text(-0.1, 0.5, label,
-                        transform=ax.transAxes,
-                        rotation=90,
-                        va="center", ha="center",
-                        fontsize=13, fontweight='bold')
+            # --------------------------------------------------
+            # Save source data
+            #
+            # Convert the DataArray to a tidy table containing
+            # latitude/longitude and the exact value plotted.
+            # --------------------------------------------------
+            if source_data:
 
-            # --- Column titles (Quintiles) ---
+                bias_df = bias.to_dataframe(
+                    name="Mean_Bias"
+                ).reset_index()
+
+                # Add metadata identifying this panel.
+                bias_df["Model"] = model_name
+                bias_df["Model_Label"] = (
+                    all_model_names.get(
+                        model_name,
+                        model_name
+                    )
+                    if 'all_model_names'
+                    in globals()
+                    else model_name
+                )
+
+                bias_df["Frequency"] = f
+                bias_df["Frequency_ID"] = (
+                    f"f{f}"
+                )
+
+                bias_df["Variable_ID"] = gt_id
+
+                bias_df["Variable"] = (
+                    gt_id_names.get(
+                        gt_id,
+                        gt_id
+                    )
+                    if 'gt_id_names'
+                    in globals()
+                    else gt_id
+                )
+
+                bias_df["Horizon"] = horizon
+
+                bias_df["Horizon_Label"] = (
+                    horizon_names.get(
+                        horizon,
+                        f"Horizon {horizon}"
+                    )
+                    if 'horizon_names'
+                    in globals()
+                    else f"Horizon {horizon}"
+                )
+
+                bias_df["Target_Dates"] = (
+                    target_dates
+                )
+
+                # Put identifying columns first.
+                preferred_columns = [
+                    "Variable_ID",
+                    "Variable",
+                    "Horizon",
+                    "Horizon_Label",
+                    "Target_Dates",
+                    "Model",
+                    "Model_Label",
+                    "Frequency",
+                    "Frequency_ID",
+                ]
+
+                remaining_columns = [
+                    c
+                    for c in bias_df.columns
+                    if c not in preferred_columns
+                    and c != "Mean_Bias"
+                ]
+
+                bias_df = bias_df[
+                    preferred_columns
+                    + remaining_columns
+                    + ["Mean_Bias"]
+                ]
+
+                source_data_rows.append(
+                    bias_df
+                )
+
+            # --------------------------------------------------
+            # Row labels
+            # --------------------------------------------------
+            if j == 0:
+
+                label = (
+                    all_model_names.get(
+                        model_name,
+                        model_name
+                    )
+                    if 'all_model_names'
+                    in globals()
+                    else model_name
+                )
+
+                ax.text(
+                    -0.1,
+                    0.5,
+                    label,
+                    transform=ax.transAxes,
+                    rotation=90,
+                    va="center",
+                    ha="center",
+                    fontsize=13,
+                    fontweight='bold'
+                )
+
+            # --------------------------------------------------
+            # Column titles
+            # --------------------------------------------------
             if i == 0:
-                q_label = quintile_names.get(f"f{f}", f"f{f}") if 'quintile_names' in globals() else f"f{f}"
-                ax.set_title(q_label, fontsize=16, pad=15)
+
+                q_label = (
+                    quintile_names.get(
+                        f"f{f}",
+                        f"f{f}"
+                    )
+                    if 'quintile_names'
+                    in globals()
+                    else f"f{f}"
+                )
+
+                ax.set_title(
+                    q_label,
+                    fontsize=16,
+                    pad=15
+                )
+
             else:
+
                 ax.set_title("")
 
-    # --- Main Title ---
-    pretty_gt = gt_id_names.get(gt_id, gt_id) if 'gt_id_names' in globals() else gt_id
-    pretty_horizon = horizon_names.get(horizon, f"H{horizon}") if 'horizon_names' in globals() else f"Horizon {horizon}"
-    
-    fig.suptitle(f"{pretty_gt} ({pretty_horizon})", fontsize=18, y=1.07)
+    # ----------------------------------------------------------
+    # Main title
+    # ----------------------------------------------------------
+    pretty_gt = (
+        gt_id_names.get(
+            gt_id,
+            gt_id
+        )
+        if 'gt_id_names'
+        in globals()
+        else gt_id
+    )
 
-    # --- Colorbar ---
+    pretty_horizon = (
+        horizon_names.get(
+            horizon,
+            f"H{horizon}"
+        )
+        if 'horizon_names'
+        in globals()
+        else f"Horizon {horizon}"
+    )
+
+    fig.suptitle(
+        f"{pretty_gt} ({pretty_horizon})",
+        fontsize=18,
+        y=1.07
+    )
+
+    # ----------------------------------------------------------
+    # Colorbar
+    # ----------------------------------------------------------
     if show_cbar and im is not None:
+
         cbar = fig.colorbar(
             im,
             ax=axes,
@@ -3275,21 +5333,184 @@ def plot_bias_maps_3x4(results_dict,
             pad=0.05,
             aspect=60
         )
-        cbar.set_label("Mean Bias (Prediction - Truth)", fontsize=14)
-        cbar.ax.tick_params(labelsize=12)
 
-    # --- Save / Show ---
+        cbar.set_label(
+            "Mean Bias (Prediction - Truth)",
+            fontsize=14
+        )
+
+        cbar.ax.tick_params(
+            labelsize=12
+        )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
     if save_fig:
         out_path = os.path.join(OUT_DIR, f"bias_maps_{gt_id}_{horizon}.pdf")
         plt.savefig(out_path, dpi=300, bbox_inches='tight')
         print(f"Saved figure to {out_path}")
+        plt.savefig(out_path.replace('.pdf', '.eps'), dpi=300, bbox_inches='tight')
 
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        # If you want to share one workbook between multiple
+        # subfigures, save it in SRC_DATA_DIR.
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename
+        )
+
+        os.makedirs(
+            SRC_DATA_DIR,
+            exist_ok=True
+        )
+
+        # ----------------------------------------------
+        # Combine all spatial maps
+        # ----------------------------------------------
+        if source_data_rows:
+
+            source_maps_df = pd.concat(
+                source_data_rows,
+                ignore_index=True
+            )
+
+        else:
+
+            source_maps_df = pd.DataFrame()
+
+        # ----------------------------------------------
+        # Metadata
+        # ----------------------------------------------
+        metadata_df = pd.DataFrame(
+            [
+                {
+                    "Parameter": "Variable ID",
+                    "Value": gt_id
+                },
+                {
+                    "Parameter": "Variable",
+                    "Value": pretty_gt
+                },
+                {
+                    "Parameter": "Horizon",
+                    "Value": horizon
+                },
+                {
+                    "Parameter": "Horizon label",
+                    "Value": pretty_horizon
+                },
+                {
+                    "Parameter": "Target dates",
+                    "Value": target_dates
+                },
+                {
+                    "Parameter": "Models",
+                    "Value": ", ".join(
+                        model_names
+                    )
+                },
+                {
+                    "Parameter": "Frequencies",
+                    "Value": ", ".join(
+                        map(str, fs)
+                    )
+                },
+                {
+                    "Parameter": "Colormap",
+                    "Value": cmap
+                },
+                {
+                    "Parameter": "Colorbar minimum",
+                    "Value": vmin
+                },
+                {
+                    "Parameter": "Colorbar maximum",
+                    "Value": vmax
+                },
+                {
+                    "Parameter": "Arid mask applied",
+                    "Value": (
+                        gt_id.endswith("pr")
+                    )
+                },
+                {
+                    "Parameter": "Quantity",
+                    "Value": (
+                        "Mean Bias "
+                        "(Prediction - Truth)"
+                    )
+                },
+            ]
+        )
+
+        # ----------------------------------------------
+        # Save to workbook
+        #
+        # Append if workbook already exists so this
+        # function can share a workbook with other
+        # subfigures.
+        # ----------------------------------------------
+        if os.path.exists(
+            fig_filename
+        ):
+
+            writer_mode = "a"
+
+        else:
+
+            writer_mode = "w"
+
+        with pd.ExcelWriter(
+            fig_filename,
+            engine="openpyxl",
+            mode=writer_mode,
+            if_sheet_exists=(
+                "replace"
+                if writer_mode == "a"
+                else None
+            )
+        ) as writer:
+
+            maps_sheet = (
+                f"{source_data_sheet_prefix}_maps"
+            )[:31]
+
+            metadata_sheet = (
+                f"{source_data_sheet_prefix}_metadata"
+            )[:31]
+
+            source_maps_df.to_excel(
+                writer,
+                sheet_name=maps_sheet,
+                index=False,
+                na_rep="NaN"
+            )
+
+            metadata_df.to_excel(
+                writer,
+                sheet_name=metadata_sheet,
+                index=False
+            )
+
+        print(
+            f"Source data saved: {fig_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Show / close
+    # ----------------------------------------------------------
     if show_fig:
+
         plt.show()
+
     else:
+
         plt.close(fig)
-
-
 
 
 def get_all_preds(model_names,
@@ -3395,79 +5616,452 @@ def get_all_preds(model_names,
 
     return results_dict
 
-def print_model_bias(results_dict, 
-                     model_names,
-                     gt_id='era5-mslp',
-                     horizon=19,
-                     fs=[1, 2, 3, 4]):
+
+def print_model_bias(
+    results_dict,
+    model_names,
+    gt_id='era5-mslp',
+    horizon=19,
+    fs=[1, 2, 3, 4],
+    source_data=False,
+    source_data_filename="fig_s3-bias_maps_precip.xlsx",
+    source_data_sheet_prefix="fig_s3b"
+):
     """
-    Computes bias metrics using pre-loaded results_dict and gt_dict.
+    Computes bias metrics using pre-loaded results_dict.
+
     Uses latitude-weighting for global average accuracy.
+
+    If source_data=True, appends the summary statistics to the
+    same Excel workbook used by plot_bias_maps_3x4.
+
+    Source data sheet:
+        <prefix>_stats
+
+    Columns:
+        Variable_ID
+        Variable
+        Horizon
+        Horizon_Label
+        Model
+        Model_Label
+        Frequency
+        Frequency_ID
+        Mean_Bias
+        Mean_Abs_Bias
+        RMS_Bias
+        Overall
     """
-    measurement = gt_id.replace('era5-', '')
+
+    import os
+    import numpy as np
+    import pandas as pd
+    import xarray as xr
+
+    measurement = gt_id.replace(
+        'era5-',
+        ''
+    )
+
     results = []
 
-    # Get data from dictionaries
+    # ----------------------------------------------------------
+    # Get data from dictionary
+    # ----------------------------------------------------------
     if (gt_id, horizon) not in results_dict:
-        print(f"Key {(gt_id, horizon)} not found in results_dict.")
-        return []
-    
-    ds = results_dict[(gt_id, horizon)]
 
-    # Header Printing
-    pretty_name = gt_id_names.get(gt_id, gt_id) if 'gt_id_names' in globals() else gt_id
-    pretty_hor = horizon_names.get(horizon, horizon) if 'horizon_names' in globals() else horizon
-    
-    print(f"\n--- Bias Analysis: {pretty_name} ({pretty_hor}) ---")
-    print(f"{'Model':<20} | {'Quintile':<8} | {'Mean Bias':<12} | {'Mean Abs Bias':<12} | {'RMS Bias':<12}")
+        print(
+            f"Key {(gt_id, horizon)} "
+            f"not found in results_dict."
+        )
+
+        return []
+
+    ds = results_dict[
+        (gt_id, horizon)
+    ]
+
+    # ----------------------------------------------------------
+    # Pretty names
+    # ----------------------------------------------------------
+    pretty_name = (
+        gt_id_names.get(
+            gt_id,
+            gt_id
+        )
+        if 'gt_id_names' in globals()
+        else gt_id
+    )
+
+    pretty_hor = (
+        horizon_names.get(
+            horizon,
+            horizon
+        )
+        if 'horizon_names' in globals()
+        else horizon
+    )
+
+    # ----------------------------------------------------------
+    # Header printing
+    # ----------------------------------------------------------
+    print(
+        f"\n--- Bias Analysis: "
+        f"{pretty_name} ({pretty_hor}) ---"
+    )
+
+    print(
+        f"{'Model':<20} | "
+        f"{'Quintile':<8} | "
+        f"{'Mean Bias':<12} | "
+        f"{'Mean Abs Bias':<12} | "
+        f"{'RMS Bias':<12}"
+    )
+
     print("-" * 80)
 
-    for model_name in [m for m in model_names if m!='gt']:
-        model_mbs, model_mabs, model_rms = [], [], []
+    # ----------------------------------------------------------
+    # Source-data rows
+    # ----------------------------------------------------------
+    source_rows = []
 
+    # ----------------------------------------------------------
+    # Loop over models
+    # ----------------------------------------------------------
+    for model_name in [
+        m for m in model_names
+        if m != 'gt'
+    ]:
+
+        model_mbs = []
+        model_mabs = []
+        model_rms = []
+
+        # ------------------------------------------------------
+        # Loop over frequencies/quintiles
+        # ------------------------------------------------------
         for f in fs:
-            var_name = f"f{f}_{measurement}"
-            
+
+            var_name = (
+                f"f{f}_{measurement}"
+            )
+
             if var_name not in ds:
+
                 continue
 
-            # Select data and align times
-            pred = ds[var_name].sel(model=model_name)
-            truth = ds[var_name].sel(model='gt')
-            
-            pred, truth_aligned = xr.align(pred, truth)
-            bias = pred - truth_aligned
+            # --------------------------------------------------
+            # Select prediction and truth
+            # --------------------------------------------------
+            pred = ds[
+                var_name
+            ].sel(
+                model=model_name
+            )
 
-            # Latitude weighting: cos(lat)
-            weights = np.cos(np.deg2rad(bias['latitude']))
-            
-            # Weighted operations
-            # spatial averaging             
-            mb = bias.weighted(weights).mean().compute().item()
-            mab = np.abs(bias).weighted(weights).mean().compute().item()
-            rms = np.sqrt((bias**2).weighted(weights).mean().compute().item())
+            truth = ds[
+                var_name
+            ].sel(
+                model='gt'
+            )
 
-            print(f"{model_name:<20} | f{f:<7} | {mb:>12.4f} | {mab:>12.4f} | {rms:>12.4f}")
-            
+            # Align times
+            pred, truth_aligned = xr.align(
+                pred,
+                truth
+            )
+
+            bias = (
+                pred
+                - truth_aligned
+            )
+
+            # --------------------------------------------------
+            # Latitude weighting
+            # --------------------------------------------------
+            weights = np.cos(
+                np.deg2rad(
+                    bias['latitude']
+                )
+            )
+
+            # --------------------------------------------------
+            # Weighted statistics
+            # --------------------------------------------------
+            mb = (
+                bias
+                .weighted(weights)
+                .mean()
+                .compute()
+                .item()
+            )
+
+            mab = (
+                np.abs(bias)
+                .weighted(weights)
+                .mean()
+                .compute()
+                .item()
+            )
+
+            rms = np.sqrt(
+                (
+                    bias ** 2
+                )
+                .weighted(weights)
+                .mean()
+                .compute()
+                .item()
+            )
+
+            # --------------------------------------------------
+            # Print
+            # --------------------------------------------------
+            print(
+                f"{model_name:<20} | "
+                f"f{f:<7} | "
+                f"{mb:>12.4f} | "
+                f"{mab:>12.4f} | "
+                f"{rms:>12.4f}"
+            )
+
             model_mbs.append(mb)
             model_mabs.append(mab)
             model_rms.append(rms)
-            
-            results.append({
-                'model': model_name, 'quintile': f, 
-                'mean_bias': mb, 'mean_abs_bias': mab, 'rms_bias': rms
-            })
 
-        # --- Overall Stats for Model ---
+            # --------------------------------------------------
+            # Return-value data
+            # --------------------------------------------------
+            results.append(
+                {
+                    'model': model_name,
+                    'quintile': f,
+                    'mean_bias': mb,
+                    'mean_abs_bias': mab,
+                    'rms_bias': rms
+                }
+            )
+
+            # --------------------------------------------------
+            # Source-data row
+            # --------------------------------------------------
+            model_label = (
+                all_model_names.get(
+                    model_name,
+                    model_name
+                )
+                if 'all_model_names'
+                in globals()
+                else model_name
+            )
+
+            source_rows.append(
+                {
+                    "Variable_ID": gt_id,
+                    "Variable": pretty_name,
+                    "Horizon": horizon,
+                    "Horizon_Label": pretty_hor,
+                    "Model": model_name,
+                    "Model_Label": model_label,
+                    "Frequency": f,
+                    "Frequency_ID": f"f{f}",
+                    "Mean_Bias": mb,
+                    "Mean_Abs_Bias": mab,
+                    "RMS_Bias": rms,
+                    "Overall": False,
+                }
+            )
+
+        # ------------------------------------------------------
+        # Overall statistics for model
+        # ------------------------------------------------------
         if model_mbs:
-            avg_mb = np.mean(model_mbs)
-            avg_mab = np.mean(model_mabs)
-            avg_rms = np.sqrt(np.mean(np.square(model_rms)))
-            print(f"{' '*20} | {'OVERALL':<8} | {avg_mb:>12.4f} | {avg_mab:>12.4f} | {avg_rms:>12.4f}")
-        
+
+            avg_mb = np.mean(
+                model_mbs
+            )
+
+            avg_mab = np.mean(
+                model_mabs
+            )
+
+            avg_rms = np.sqrt(
+                np.mean(
+                    np.square(
+                        model_rms
+                    )
+                )
+            )
+
+            print(
+                f"{' '*20} | "
+                f"{'OVERALL':<8} | "
+                f"{avg_mb:>12.4f} | "
+                f"{avg_mab:>12.4f} | "
+                f"{avg_rms:>12.4f}"
+            )
+
+            model_label = (
+                all_model_names.get(
+                    model_name,
+                    model_name
+                )
+                if 'all_model_names'
+                in globals()
+                else model_name
+            )
+
+            # ----------------------------------------------
+            # Save overall row
+            # ----------------------------------------------
+            source_rows.append(
+                {
+                    "Variable_ID": gt_id,
+                    "Variable": pretty_name,
+                    "Horizon": horizon,
+                    "Horizon_Label": pretty_hor,
+                    "Model": model_name,
+                    "Model_Label": model_label,
+                    "Frequency": "OVERALL",
+                    "Frequency_ID": "overall",
+                    "Mean_Bias": avg_mb,
+                    "Mean_Abs_Bias": avg_mab,
+                    "RMS_Bias": avg_rms,
+                    "Overall": True,
+                }
+            )
+
         print("-" * 80)
 
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        # Same directory convention as plot_bias_maps_3x4
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename
+        )
+
+        os.makedirs(
+            SRC_DATA_DIR,
+            exist_ok=True
+        )
+
+        stats_df = pd.DataFrame(
+            source_rows
+        )
+
+        # ------------------------------------------------------
+        # Metadata
+        # ------------------------------------------------------
+        metadata_df = pd.DataFrame(
+            [
+                {
+                    "Parameter": "Variable ID",
+                    "Value": gt_id
+                },
+                {
+                    "Parameter": "Variable",
+                    "Value": pretty_name
+                },
+                {
+                    "Parameter": "Horizon",
+                    "Value": horizon
+                },
+                {
+                    "Parameter": "Horizon label",
+                    "Value": pretty_hor
+                },
+                {
+                    "Parameter": "Models",
+                    "Value": ", ".join(
+                        [
+                            m
+                            for m in model_names
+                            if m != "gt"
+                        ]
+                    )
+                },
+                {
+                    "Parameter": "Frequencies",
+                    "Value": ", ".join(
+                        map(str, fs)
+                    )
+                },
+                {
+                    "Parameter": "Weighting",
+                    "Value": "Latitude weighting: cos(latitude)"
+                },
+                {
+                    "Parameter": "Mean Bias",
+                    "Value": "Weighted mean of Prediction - Truth"
+                },
+                {
+                    "Parameter": "Mean Absolute Bias",
+                    "Value": "Weighted mean of abs(Prediction - Truth)"
+                },
+                {
+                    "Parameter": "RMS Bias",
+                    "Value": "sqrt(weighted mean of (Prediction - Truth)^2)"
+                },
+            ]
+        )
+
+        # ------------------------------------------------------
+        # Append to existing workbook
+        # ------------------------------------------------------
+        if os.path.exists(
+            fig_filename
+        ):
+
+            writer_mode = "a"
+
+        else:
+
+            writer_mode = "w"
+
+        with pd.ExcelWriter(
+            fig_filename,
+            engine="openpyxl",
+            mode=writer_mode,
+            if_sheet_exists=(
+                "replace"
+                if writer_mode == "a"
+                else None
+            )
+        ) as writer:
+
+            stats_sheet = (
+                f"{source_data_sheet_prefix}_stats"
+            )[:31]
+
+            metadata_sheet = (
+                f"{source_data_sheet_prefix}_stats_metadata"
+            )[:31]
+
+            stats_df.to_excel(
+                writer,
+                sheet_name=stats_sheet,
+                index=False,
+                na_rep="NaN"
+            )
+
+            metadata_df.to_excel(
+                writer,
+                sheet_name=metadata_sheet,
+                index=False
+            )
+
+        print(
+            f"Source data appended: {fig_filename}"
+        )
+
     return results
+
+
+
 
 def plot_single_extreme_bss_barplot(all_wtd_mse,
                     model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
@@ -3671,28 +6265,61 @@ def plot_single_extreme_bss_barplot(all_wtd_mse,
         plt.close(fig_to_save)
 
 
-def plot_single_horizon_bss_barplot(all_wtd_mse,
-                                    model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
-                                    horizon=19,
-                                    prefixes=['F95_', 'F5_'],
-                                    target_dates='std_test',
-                                    show_fig=True,
-                                    save_fig=True,
-                                    n_boot=5000,
-                                    seed=42,
-                                    verbose=False,
-                                    y_bottom=None):
+
+
+def plot_single_horizon_bss_barplot(
+    all_wtd_mse,
+    model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
+    horizon=19,
+    prefixes=['F95_', 'F5_'],
+    target_dates='std_test',
+    show_fig=True,
+    save_fig=True,
+    n_boot=5000,
+    seed=42,
+    verbose=False,
+    y_bottom=None,
+    source_data=False,
+    source_data_filename="fig_s9-bss_plots.xlsx",
+    source_data_sheet_prefix="FigS9b",
+):
     """
     Plot a barplot of Brier Skill Score (BSS) for one horizon and two extremes.
 
     For each variable, the two bar groups correspond to the two entries in
     prefixes (for example, ['F95_', 'F5_'] for extreme highs and lows).
+
+    If source_data=True, the data underlying the plotted bars and the
+    significance information used for hatching are saved to an Excel
+    workbook.
+
+    Args:
+        all_wtd_mse: Dictionary of weighted MSE datasets for each task.
+        model_names: Models to include in the plot.
+        horizon: Forecast horizon.
+        prefixes: Exactly two prefixes corresponding to the two extremes.
+        target_dates: Target-date identifier.
+        show_fig: Whether to display the figure.
+        save_fig: Whether to save the figure.
+        n_boot: Number of bootstrap samples for significance testing.
+        seed: Random seed for bootstrap significance testing.
+        verbose: Whether to print verbose output.
+        y_bottom: Lower y-axis limit.
+        source_data: Whether to save source data.
+        source_data_filename: XLSX filename for source data.
+        source_data_sheet_prefix: Prefix for source-data worksheet names.
     """
 
     if len(prefixes) != 2:
-        raise ValueError("prefixes must contain exactly two entries, e.g. ['F95_', 'F5_']")
+        raise ValueError(
+            "prefixes must contain exactly two entries, "
+            "e.g. ['F95_', 'F5_']"
+        )
 
     model_names = [m for m in model_names if m != 'climatology']
+
+    if len(model_names) == 0:
+        raise ValueError("model_names must contain at least one model.")
 
     variables = {
         "Temperature": "tas",
@@ -3703,93 +6330,294 @@ def plot_single_horizon_bss_barplot(all_wtd_mse,
     def get_extreme_label(prefix):
         percentile = int(prefix.rstrip("_").lstrip("F"))
         if percentile > 50:
-            return f"Very High"
-        return f"Very Low"
+            return "Very High"
+        return "Very Low"
 
-    extreme_labels = [get_extreme_label(prefix) for prefix in prefixes]
+    extreme_labels = [
+        get_extreme_label(prefix)
+        for prefix in prefixes
+    ]
 
-    # Compute BSS and test for significant improvements of
-    # target model over baselines.
+    # ----------------------------------------------------------
+    # Compute BSS and test for significant improvements
+    # ----------------------------------------------------------
     results_bss = {}
     results_significant = {}
+
     target_model = model_names[-1]
+
     for var_name, var_code in variables.items():
+
         for prefix in prefixes:
+
             key = f"era5-{prefix}{var_code}_{horizon}"
+
             ds = all_wtd_mse[key].dropna("time", how="any")
 
             bss = {}
+
             target = ds[target_model].values
             clim = ds["climatology"].values
+
             all_significant = True
 
             for model_name in model_names:
+
                 baseline = ds[model_name].values
-                bss[model_name] = 1 - (np.mean(baseline) / np.mean(clim))
+
+                bss[model_name] = (
+                    1
+                    - (
+                        np.mean(baseline)
+                        / np.mean(clim)
+                    )
+                )
 
                 if model_name != target_model:
+
                     lower_cb = lower_confidence_bound(
                         baseline - target,
                         clim=clim,
                         n_boot=n_boot,
                         seed=seed,
                     )
+
                     if verbose:
                         printf(
                             f"  {var_name} | H{horizon} | {prefix} | "
-                            f"{target_model} - {model_name} BSS confidence bound: {lower_cb}"
+                            f"{target_model} - {model_name} "
+                            f"BSS confidence bound: {lower_cb}"
                         )
+
                     if lower_cb <= 0:
                         all_significant = False
 
             results_bss[(var_name, prefix)] = bss
             results_significant[(var_name, prefix)] = all_significant
 
-    categories = [(var_name, prefix) for var_name in variables for prefix in prefixes]
+    # ----------------------------------------------------------
+    # Organize categories and values
+    # ----------------------------------------------------------
+    categories = [
+        (var_name, prefix)
+        for var_name in variables
+        for prefix in prefixes
+    ]
 
     values = np.array([
-        [results_bss[c][model_names[i]] for c in categories]
+        [
+            results_bss[category][model_names[i]]
+            for category in categories
+        ]
         for i in range(len(model_names))
     ])
 
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename,
+        )
+
+        # ------------------------------------------------------
+        # BSS values used directly for the plotted bars
+        # ------------------------------------------------------
+        results_rows = []
+
+        for (variable, prefix), models in results_bss.items():
+
+            extreme_label = get_extreme_label(prefix)
+
+            for model, bss in models.items():
+
+                results_rows.append({
+                    "Variable": variable,
+                    "Prefix": prefix,
+                    "Extreme": extreme_label,
+                    "Horizon": horizon,
+                    "Target dates": target_dates,
+                    "Model": model,
+                    "BSS": bss,
+                })
+
+        results_df = pd.DataFrame(results_rows)
+
+        # ------------------------------------------------------
+        # Significance information used to hatch target bars
+        # ------------------------------------------------------
+        significance_rows = []
+
+        for (variable, prefix), significant in results_significant.items():
+
+            significance_rows.append({
+                "Variable": variable,
+                "Prefix": prefix,
+                "Extreme": get_extreme_label(prefix),
+                "Horizon": horizon,
+                "Target dates": target_dates,
+                "Target model": target_model,
+                "Significant_All": significant,
+            })
+
+        significance_df = pd.DataFrame(significance_rows)
+
+        # ------------------------------------------------------
+        # Write to the existing workbook if it exists.
+        #
+        # This preserves source-data sheets written by other
+        # subfigures/functions using the same XLSX file.
+        # ------------------------------------------------------
+        results_sheet_name = (
+            f"{source_data_sheet_prefix}_results"
+        )
+
+        significance_sheet_name = (
+            f"{source_data_sheet_prefix}_significance"
+        )
+
+        # Excel worksheet names are limited to 31 characters.
+        if len(results_sheet_name) > 31:
+            raise ValueError(
+                f"Source-data sheet name '{results_sheet_name}' "
+                "is longer than Excel's 31-character limit."
+            )
+
+        if len(significance_sheet_name) > 31:
+            raise ValueError(
+                f"Source-data sheet name '{significance_sheet_name}' "
+                "is longer than Excel's 31-character limit."
+            )
+
+        if os.path.exists(fig_filename):
+
+            with pd.ExcelWriter(
+                fig_filename,
+                engine="openpyxl",
+                mode="a",
+                if_sheet_exists="replace",
+            ) as writer:
+
+                results_df.to_excel(
+                    writer,
+                    sheet_name=results_sheet_name,
+                    index=False,
+                )
+
+                significance_df.to_excel(
+                    writer,
+                    sheet_name=significance_sheet_name,
+                    index=False,
+                )
+
+        else:
+
+            with pd.ExcelWriter(
+                fig_filename,
+                engine="openpyxl",
+                mode="w",
+            ) as writer:
+
+                results_df.to_excel(
+                    writer,
+                    sheet_name=results_sheet_name,
+                    index=False,
+                )
+
+                significance_df.to_excel(
+                    writer,
+                    sheet_name=significance_sheet_name,
+                    index=False,
+                )
+
+        print(
+            f"Source data saved: {fig_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Geometry
+    # ----------------------------------------------------------
     fig, ax = plt.subplots(figsize=(14, 6))
 
     n_vars = len(variables)
     n_extremes = len(prefixes)
+
     width = 0.22
     group_gap = 0.0
 
     x_positions = []
+
     for var_idx in range(n_vars):
-        base = var_idx * (n_extremes + group_gap)
+
+        base = var_idx * (
+            n_extremes + group_gap
+        )
+
         for extreme_idx in range(n_extremes):
-            x_positions.append(base + extreme_idx)
+
+            x_positions.append(
+                base + extreme_idx
+            )
+
     x_positions = np.array(x_positions)
 
+    # ----------------------------------------------------------
+    # Draw bars
+    # ----------------------------------------------------------
     for i, model_name in enumerate(model_names):
+
         bars = ax.bar(
-            x_positions + (i - (len(model_names) - 1) / 2) * width,
+            x_positions
+            + (
+                i
+                - (len(model_names) - 1) / 2
+            ) * width,
             values[i],
             width,
             capsize=4,
             label=all_model_names[model_name],
-            color=model_colors.get(model_name, "gray"),
+            color=model_colors.get(
+                model_name,
+                "gray",
+            ),
         )
 
         if model_name == target_model:
+
             for bar_idx, bar in enumerate(bars):
-                if results_significant[categories[bar_idx]]:
+
+                if results_significant[
+                    categories[bar_idx]
+                ]:
+
                     bar.set_hatch("x")
 
-    # Extreme labels repeated under each variable group
+    # ----------------------------------------------------------
+    # X labels
+    # ----------------------------------------------------------
     ax.set_xticks(x_positions)
-    ax.set_xticklabels(extreme_labels * n_vars, fontsize=20)
 
-    # Variable labels centered under each two-extreme group
+    ax.set_xticklabels(
+        extreme_labels * n_vars,
+        fontsize=20,
+    )
+
+    # Variable labels centered below each pair of extremes.
     variable_names = list(variables.keys())
+
     for var_idx in range(n_vars):
-        base = var_idx * (n_extremes + group_gap)
-        center = base + (n_extremes - 1) / 2
+
+        base = var_idx * (
+            n_extremes + group_gap
+        )
+
+        center = (
+            base
+            + (n_extremes - 1) / 2
+        )
+
         ax.text(
             center,
             -0.12,
@@ -3801,20 +6629,50 @@ def plot_single_horizon_bss_barplot(all_wtd_mse,
             transform=ax.get_xaxis_transform(),
         )
 
+    # ----------------------------------------------------------
+    # Axes
+    # ----------------------------------------------------------
     ax.set_ylabel(
         "Brier skill score",
         fontsize=20,
-        fontweight="bold"
+        fontweight="bold",
     )
-    ax.tick_params(axis="y", labelsize=16)
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
-    ax.set_ylim(bottom=y_bottom)
 
+    ax.tick_params(
+        axis="y",
+        labelsize=16,
+    )
+
+    ax.grid(
+        axis="y",
+        linestyle="--",
+        alpha=0.5,
+    )
+
+    ax.set_ylim(
+        bottom=y_bottom
+    )
+
+    # ----------------------------------------------------------
+    # Legend
+    # ----------------------------------------------------------
     legend_handles = [
-        plt.Rectangle((0, 0), 1, 1, facecolor=model_colors.get(model_name, "gray"))
+        plt.Rectangle(
+            (0, 0),
+            1,
+            1,
+            facecolor=model_colors.get(
+                model_name,
+                "gray",
+            ),
+        )
         for model_name in model_names
     ]
-    legend_labels = [all_model_names[model_name] for model_name in model_names]
+
+    legend_labels = [
+        all_model_names[model_name]
+        for model_name in model_names
+    ]
 
     ax.legend(
         legend_handles,
@@ -3830,21 +6688,48 @@ def plot_single_horizon_bss_barplot(all_wtd_mse,
 
     plt.tight_layout()
 
-    prefix_name = "_".join(prefix.rstrip("_") for prefix in prefixes)
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
+    prefix_name = "_".join(
+        prefix.rstrip("_")
+        for prefix in prefixes
+    )
+
     filename = os.path.join(
         EXTREMES_OUT_DIR,
-        f"barplot_{prefix_name}_bss_{horizon}_{target_dates}.pdf"
+        f"barplot_{prefix_name}_bss_{horizon}_{target_dates}.pdf",
     )
 
     if save_fig:
-        plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
-        plt.savefig(filename.replace('.pdf', '.jpeg'), dpi=300, transparent=True, bbox_inches='tight')
-        print(f"Figure saved: {filename}")
+
+        plt.savefig(
+            filename,
+            dpi=300,
+            transparent=True,
+            bbox_inches="tight",
+        )
+
+        plt.savefig(
+            filename.replace(".pdf", ".jpeg"),
+            dpi=300,
+            transparent=True,
+            bbox_inches="tight",
+        )
+
+        print(
+            f"Figure saved: {filename}"
+        )
+
+        plt.savefig(filename.replace('.pdf', '.eps'), dpi=300, transparent=True, bbox_inches='tight')
+        print(f"Figure saved: {filename.replace('.pdf', '.eps')}") 
 
     if show_fig:
         plt.show()
     else:
         plt.close(fig)
+
+
 
 
 def plot_single_extreme_bss_diff_grid_6x4(
@@ -4031,6 +6916,7 @@ def plot_single_extreme_bss_diff_grid_6x4(
         plt.close(fig)
 
 
+
 def plot_single_horizon_bss_diff_grid_6x4(
     model_names=['ecmwf', 'debiased_ecmwf', 'pbc_ecmwf_combo'],
     prefixes=['F95_', 'F5_'],
@@ -4039,10 +6925,17 @@ def plot_single_horizon_bss_diff_grid_6x4(
     diff_cmap="bwr",
     skill_cmap="RdBu_r",
     show_fig=True,
-    save_fig=False):
+    save_fig=False,
+    source_data=False,
+    source_data_filename="fig_s9-bss_plots.xlsx",
+    source_data_sheet_prefix="FigS9b_diff",
+):
 
     if len(prefixes) != 2:
-        raise ValueError("prefixes must contain exactly two entries, e.g. ['F95_', 'F5_']")
+        raise ValueError(
+            "prefixes must contain exactly two entries, "
+            "e.g. ['F95_', 'F5_']"
+        )
 
     variables = {
         "tas": "Temperature",
@@ -4052,153 +6945,477 @@ def plot_single_horizon_bss_diff_grid_6x4(
 
     # Load arid mask once if precipitation is being plotted
     if any(var_code == "pr" for var_code in variables):
-        # print("Computing zero quintiles mask")
-        quintiles = xr.open_dataset("data/era5-quintiles-pr.zarr", engine="zarr").load()
+
+        quintiles = xr.open_dataset(
+            "data/era5-quintiles-pr.zarr",
+            engine="zarr",
+        ).load()
 
     def get_extreme_label(prefix):
-        percentile = int(prefix.rstrip("_").lstrip("F"))
+        percentile = int(
+            prefix.rstrip("_").lstrip("F")
+        )
+
         if percentile > 50:
-            return f"Very High"
-        return f"Very Low"
+            return "Very High"
+
+        return "Very Low"
 
     num_rows = len(variables) * len(prefixes)
-    num_cols = len(model_names) + 2  # models + spacer + diff
+    num_cols = len(model_names) + 2
 
     # Create a visible gap via a thin spacer column
-    width_ratios = [1] * len(model_names) + [0.05, 1]
-
-    fig, axes = plt.subplots(
-        num_rows, num_cols,
-        figsize=(18, 18),
-        subplot_kw={"projection": ccrs.Robinson()},
-        constrained_layout=True,
-        gridspec_kw={"width_ratios": width_ratios}
+    width_ratios = (
+        [1] * len(model_names)
+        + [0.05, 1]
     )
 
+    fig, axes = plt.subplots(
+        num_rows,
+        num_cols,
+        figsize=(18, 18),
+        subplot_kw={
+            "projection": ccrs.Robinson()
+        },
+        constrained_layout=True,
+        gridspec_kw={
+            "width_ratios": width_ratios
+        },
+    )
+
+    # ----------------------------------------------------------
+    # Source-data storage
+    # ----------------------------------------------------------
+    #
+    # Store the actual spatial BSS fields after application of
+    # the precipitation arid mask, as well as the BSS difference
+    # field used in the final column.
+    #
+    # Each entry is an xarray DataArray corresponding to one
+    # plotted map.
+    # ----------------------------------------------------------
+    source_bss_data = []
+    source_diff_data = []
 
     curr_row = 0
     im_metric, im_diff = None, None
 
     metric = 'lat_lon_mse'
+
     for var_code, var_name in variables.items():
+
         for prefix in prefixes:
+
             gt_id = f"era5-{prefix}{var_code}"
             task = f"{gt_id}_{horizon}"
 
+            # --------------------------------------------------
+            # Precipitation arid mask
+            # --------------------------------------------------
             arid_mask = None
-            if gt_id.endswith("pr"):
-                quintiles_sel = quintiles.sel(time=get_target_dates(target_dates, horizon))
-                arid_mask = (quintiles_sel["pr"].isel(quantile=-1) == 0).any(dim="time")     
 
+            if gt_id.endswith("pr"):
+
+                quintiles_sel = quintiles.sel(
+                    time=get_target_dates(
+                        target_dates,
+                        horizon,
+                    )
+                )
+
+                arid_mask = (
+                    quintiles_sel["pr"]
+                    .isel(quantile=-1)
+                    == 0
+                ).any(dim="time")
+
+            # --------------------------------------------------
             # Load climatology lat_lon_mse
-            sn = get_selected_submodel_name("climatology", gt_id, horizon)
+            # --------------------------------------------------
+            sn = get_selected_submodel_name(
+                "climatology",
+                gt_id,
+                horizon,
+            )
+
             filename = os.path.join(
-                'eval', 'metrics', "climatology",
-                'submodel_forecasts', sn,
+                'eval',
+                'metrics',
+                "climatology",
+                'submodel_forecasts',
+                sn,
                 task,
                 f'{metric}-{task}-{target_dates}.zarr'
             )
+
             clim = xr.open_zarr(filename).load()
 
+            # --------------------------------------------------
             # Compute spatial BSS for each model
+            # --------------------------------------------------
             metrics = {}
+
             for model_name in model_names:
-                sn = get_selected_submodel_name(model_name, gt_id, horizon)
+
+                sn = get_selected_submodel_name(
+                    model_name,
+                    gt_id,
+                    horizon,
+                )
 
                 filename = os.path.join(
-                    'eval', 'metrics', model_name,
-                    'submodel_forecasts', sn,
+                    'eval',
+                    'metrics',
+                    model_name,
+                    'submodel_forecasts',
+                    sn,
                     task,
                     f'{metric}-{task}-{target_dates}.zarr'
                 )
 
-                # Spatial BSS = 1 - (model_lat_lon_mse / climatology_lat_lon_mse)
-                metrics[model_name] = 1 - xr.open_zarr(filename).load() / clim
+                # Spatial BSS =
+                # 1 - (model lat_lon_mse / climatology lat_lon_mse)
+                metrics[model_name] = (
+                    1
+                    - xr.open_zarr(filename).load()
+                    / clim
+                )
 
-            metrics['diff'] = metrics[model_names[-1]] - metrics[model_names[-2]]
+            # Difference between target and baseline model.
+            metrics['diff'] = (
+                metrics[model_names[-1]]
+                - metrics[model_names[-2]]
+            )
 
             row_axes = axes[curr_row]
 
+            # --------------------------------------------------
             # Style all axes
+            # --------------------------------------------------
             for ax in row_axes:
+
                 ax.set_global()
-                ax.coastlines(color="black", linewidth=0.6)
+
+                ax.coastlines(
+                    color="black",
+                    linewidth=0.6,
+                )
+
                 ax.spines["geo"].set_linewidth(2.25)
 
             # Hide spacer column
             spacer_idx = len(model_names)
             row_axes[spacer_idx].set_visible(False)
 
+            # --------------------------------------------------
             # Row label
-            row_label = f"{var_name}\n{get_extreme_label(prefix)}"
-            row_axes[0].text(
-                -0.15, 0.5, row_label,
-                va="center", ha="center",
-                rotation=90,
-                transform=row_axes[0].transAxes,
-                fontsize=20
+            # --------------------------------------------------
+            row_label = (
+                f"{var_name}\n"
+                f"{get_extreme_label(prefix)}"
             )
 
-            # Plot model columns
+            row_axes[0].text(
+                -0.15,
+                0.5,
+                row_label,
+                va="center",
+                ha="center",
+                rotation=90,
+                transform=row_axes[0].transAxes,
+                fontsize=20,
+            )
+
+            # --------------------------------------------------
+            # Plot model BSS columns
+            # --------------------------------------------------
             for i, model_name in enumerate(model_names):
+
                 data = metrics[model_name][metric]
+
                 if arid_mask is not None:
                     data = data.where(~arid_mask)
+
+                # Store exactly the data being plotted.
+                if source_data:
+
+                    source_bss_data.append({
+                        "Variable": var_name,
+                        "Variable code": var_code,
+                        "Prefix": prefix,
+                        "Extreme": get_extreme_label(prefix),
+                        "Horizon": horizon,
+                        "Target dates": target_dates,
+                        "Model": model_name,
+                        "Data": data,
+                    })
+
                 im = data.plot(
                     ax=row_axes[i],
                     transform=ccrs.PlateCarree(),
                     cmap=skill_cmap,
-                    vmin=-1, vmax=1,
+                    vmin=-1,
+                    vmax=1,
                     add_colorbar=False,
-                    rasterized=True
+                    rasterized=True,
                 )
 
-            # Diff column (last column)
+            # --------------------------------------------------
+            # Plot difference column
+            # --------------------------------------------------
             diff_ax = row_axes[-1]
+
             diff_data = metrics['diff'][metric]
+
             if arid_mask is not None:
                 diff_data = diff_data.where(~arid_mask)
+
+            # Store exactly the difference field being plotted.
+            if source_data:
+
+                source_diff_data.append({
+                    "Variable": var_name,
+                    "Variable code": var_code,
+                    "Prefix": prefix,
+                    "Extreme": get_extreme_label(prefix),
+                    "Horizon": horizon,
+                    "Target dates": target_dates,
+                    "Target model": model_names[-1],
+                    "Baseline model": model_names[-2],
+                    "Data": diff_data,
+                })
+
             im2 = diff_data.plot(
                 ax=diff_ax,
                 transform=ccrs.PlateCarree(),
                 cmap=diff_cmap,
-                vmin=-0.2, vmax=0.2,
+                vmin=-0.2,
+                vmax=0.2,
                 add_colorbar=False,
-                rasterized=True
+                rasterized=True,
             )
 
+            # --------------------------------------------------
+            # Print fraction of grid cells improved
+            # --------------------------------------------------
             nonnull = diff_data.notnull()
             num_nonnull = nonnull.sum().values
+
             print(
                 f"{task}: % grid cells improved: "
-                f"{float(((nonnull & (diff_data > 0)).sum() / num_nonnull).values)} "
+                f"{float((
+                    (nonnull & (diff_data > 0)).sum()
+                    / num_nonnull
+                ).values)} "
                 f"of {num_nonnull}"
             )
 
+            # --------------------------------------------------
             # Titles (top row only)
+            # --------------------------------------------------
             if curr_row == 0:
+
                 for i, model_name in enumerate(model_names):
+
                     row_axes[i].set_title(
                         all_model_names[model_name],
                         fontsize=20,
-                        pad=30
+                        pad=30,
                     )
 
                 diff_ax.set_title(
-                    f"{all_model_names[model_names[-1]]} - {all_model_names[model_names[-2]]}",
+                    f"{all_model_names[model_names[-1]]} - "
+                    f"{all_model_names[model_names[-2]]}",
                     fontsize=20,
-                    pad=30
+                    pad=30,
                 )
+
             else:
+
                 for ax in row_axes:
                     ax.set_title("")
 
-            im_metric, im_diff = im, im2
+            im_metric = im
+            im_diff = im2
+
             curr_row += 1
 
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+    if source_data:
+
+        fig_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename,
+        )
+
+        # ------------------------------------------------------
+        # Convert spatial BSS fields to tidy DataFrame
+        # ------------------------------------------------------
+        bss_rows = []
+
+        for entry in source_bss_data:
+
+            data = entry["Data"]
+
+            # Remove singleton dimensions, while preserving the
+            # spatial latitude/longitude dimensions.
+            data = data.squeeze()
+
+            df = data.to_dataframe(
+                name="BSS"
+            ).reset_index()
+
+            # Identify latitude/longitude column names. In case
+            # the dataset uses lat/lon or latitude/longitude,
+            # retain the original names.
+            for _, row in df.iterrows():
+
+                row_data = {
+                    "Variable": entry["Variable"],
+                    "Variable code": entry["Variable code"],
+                    "Prefix": entry["Prefix"],
+                    "Extreme": entry["Extreme"],
+                    "Horizon": entry["Horizon"],
+                    "Target dates": entry["Target dates"],
+                    "Model": entry["Model"],
+                    "BSS": row["BSS"],
+                }
+
+                # Add all coordinate columns.
+                for coord_name in df.columns:
+
+                    if coord_name == "BSS":
+                        continue
+
+                    row_data[coord_name] = row[coord_name]
+
+                bss_rows.append(row_data)
+
+        bss_df = pd.DataFrame(bss_rows)
+
+        # ------------------------------------------------------
+        # Convert difference fields to tidy DataFrame
+        # ------------------------------------------------------
+        diff_rows = []
+
+        for entry in source_diff_data:
+
+            data = entry["Data"]
+            data = data.squeeze()
+
+            df = data.to_dataframe(
+                name="BSS_difference"
+            ).reset_index()
+
+            for _, row in df.iterrows():
+
+                row_data = {
+                    "Variable": entry["Variable"],
+                    "Variable code": entry["Variable code"],
+                    "Prefix": entry["Prefix"],
+                    "Extreme": entry["Extreme"],
+                    "Horizon": entry["Horizon"],
+                    "Target dates": entry["Target dates"],
+                    "Target model": entry["Target model"],
+                    "Baseline model": entry["Baseline model"],
+                    "BSS_difference": row["BSS_difference"],
+                }
+
+                # Add all coordinate columns.
+                for coord_name in df.columns:
+
+                    if coord_name == "BSS_difference":
+                        continue
+
+                    row_data[coord_name] = row[coord_name]
+
+                diff_rows.append(row_data)
+
+        diff_df = pd.DataFrame(diff_rows)
+
+        # ------------------------------------------------------
+        # Write to shared workbook
+        #
+        # Other source-data sheets are preserved. Only the two
+        # sheets belonging to this function are replaced.
+        # ------------------------------------------------------
+        bss_sheet_name = (
+            f"{source_data_sheet_prefix}_BSS"
+        )
+
+        diff_sheet_name = (
+            f"{source_data_sheet_prefix}_diff"
+        )
+
+        if len(bss_sheet_name) > 31:
+            raise ValueError(
+                f"Source-data sheet name '{bss_sheet_name}' "
+                "is longer than Excel's 31-character limit."
+            )
+
+        if len(diff_sheet_name) > 31:
+            raise ValueError(
+                f"Source-data sheet name '{diff_sheet_name}' "
+                "is longer than Excel's 31-character limit."
+            )
+
+        if os.path.exists(fig_filename):
+
+            with pd.ExcelWriter(
+                fig_filename,
+                engine="openpyxl",
+                mode="a",
+                if_sheet_exists="replace",
+            ) as writer:
+
+                bss_df.to_excel(
+                    writer,
+                    sheet_name=bss_sheet_name,
+                    index=False,
+                )
+
+                diff_df.to_excel(
+                    writer,
+                    sheet_name=diff_sheet_name,
+                    index=False,
+                )
+
+        else:
+
+            with pd.ExcelWriter(
+                fig_filename,
+                engine="openpyxl",
+                mode="w",
+            ) as writer:
+
+                bss_df.to_excel(
+                    writer,
+                    sheet_name=bss_sheet_name,
+                    index=False,
+                )
+
+                diff_df.to_excel(
+                    writer,
+                    sheet_name=diff_sheet_name,
+                    index=False,
+                )
+
+        print(
+            f"Source data saved: {fig_filename}"
+        )
+
+    # ----------------------------------------------------------
     # Colorbars
-    cax1 = fig.add_axes([0.11, -0.02, 0.6, 0.02])
-    cax2 = fig.add_axes([0.79, -0.02, 0.19, 0.02])
+    # ----------------------------------------------------------
+    cax1 = fig.add_axes(
+        [0.11, -0.02, 0.6, 0.02]
+    )
+
+    cax2 = fig.add_axes(
+        [0.79, -0.02, 0.19, 0.02]
+    )
 
     cbar1 = fig.colorbar(
         im_metric,
@@ -4206,10 +7423,18 @@ def plot_single_horizon_bss_diff_grid_6x4(
         orientation="horizontal",
         fraction=0.02,
         pad=0.02,
-        aspect=40
+        aspect=40,
     )
-    cbar1.set_label('Brier skill score (BSS)', fontsize=20, labelpad=10)
-    cbar1.ax.tick_params(labelsize=20)
+
+    cbar1.set_label(
+        'Brier skill score (BSS)',
+        fontsize=20,
+        labelpad=10,
+    )
+
+    cbar1.ax.tick_params(
+        labelsize=20
+    )
 
     cbar2 = fig.colorbar(
         im_diff,
@@ -4217,19 +7442,46 @@ def plot_single_horizon_bss_diff_grid_6x4(
         orientation="horizontal",
         fraction=0.02,
         pad=0.02,
-        aspect=40
+        aspect=40,
     )
-    cbar2.set_label("BSS difference", fontsize=20, labelpad=10)
-    cbar2.ax.tick_params(labelsize=20)
 
+    cbar2.set_label(
+        "BSS difference",
+        fontsize=20,
+        labelpad=10,
+    )
+
+    cbar2.ax.tick_params(
+        labelsize=20
+    )
+
+    # ----------------------------------------------------------
+    # Save figure
+    # ----------------------------------------------------------
     if save_fig:
-        prefix_str = '_'.join(p.rstrip('_') for p in prefixes)
+
+        prefix_str = "_".join(
+            p.rstrip("_")
+            for p in prefixes
+        )
+
         outfile = os.path.join(
             EXTREMES_OUT_DIR,
             f"lat_lon_{prefix_str}_bss_{horizon}_{target_dates}.pdf"
         )
-        plt.savefig(outfile, dpi=100, bbox_inches='tight')
-        print(f"Saved: {outfile}")
+
+        plt.savefig(
+            outfile,
+            dpi=100,
+            bbox_inches='tight',
+        )
+
+        print(
+            f"Saved: {outfile}"
+        )
+
+        plt.savefig(outfile.replace(".pdf", ".eps"), dpi=100, bbox_inches='tight')
+        print(f"Saved: {outfile.replace('.pdf', '.eps')}")
 
     if show_fig:
         plt.show()
@@ -4334,59 +7586,88 @@ def open_remote_dataset(url):
 
 
 def plot_probability_maps(
-    gt_id = 'era5-pr',
-    horizon = 19,
-    target_date = None,
-    issuance_date = '20260101',
-    team_name = 'Dynamical_S2SDatabase',
-    model_name = 'ECMWF',
+    gt_id='era5-pr',
+    horizon=19,
+    target_date=None,
+    issuance_date='20260101',
+    team_name='Dynamical_S2SDatabase',
+    model_name='ECMWF',
     bbox=None,
     bbox_name=None,
     quintile=0.8,
     y_suptitle=0.89,
     show_fig=True,
-    save_fig=True
-): 
+    save_fig=True,
+    source_data=False,
+    source_data_filename="source_data.xlsx",
+):
     """
-    Plot verifying era5 (ground truth) anomalies alongside MicroDuet and AIFSGaia
-    accumulated precipitation quintile probabilities.
+    Plot verifying ERA5 (ground truth) anomalies alongside MicroDuet and
+    ECMWF/AIFS-Gaia accumulated precipitation quintile probabilities.
+
+    If source_data=True, the plotted data are appended to
+    `source_data_filename` as Excel sheets.
+
+    Saved source data:
+        - ERA5 observed anomaly
+        - MicroDuet probability
+        - selected model probability
+        - metadata describing the figure/data
     """
-    
-    
-    
+
+    # ----------------------------------------------------------
     # Process parameters
+    # ----------------------------------------------------------
+
     gt_var = gt_id.split('-')[-1]
-    horizon_2_fc_period = {'19': '1',
-                      '26': '2'}
+
+    horizon_2_fc_period = {
+        '19': '1',
+        '26': '2'
+    }
+
     fc_period = horizon_2_fc_period[str(horizon)]
-    
+
     if target_date is None:
-        target_date = (datetime.strptime(issuance_date, "%Y%m%d") + timedelta(days=int(horizon)) - timedelta(days=1)).strftime("%Y%m%d")
+        target_date = (
+            datetime.strptime(issuance_date, "%Y%m%d")
+            + timedelta(days=int(horizon))
+            - timedelta(days=1)
+        ).strftime("%Y%m%d")
+
     if issuance_date is None:
-        issuance_date = (datetime.strptime(target_date, "%Y%m%d") - timedelta(days=int(horizon)) + timedelta(days=1)).strftime("%Y%m%d")
-        
-    cbar_titles = {'pr': 'Precipitation',
-                    'tas': "Temperature",
-                    'mslp': 'Mean sea level pressure'}
-    cbar_units = {'pr': '(mm)',
-                    'tas': "(\u00B0C)",
-                    'mslp': '(hPa)'}
-    
+        issuance_date = (
+            datetime.strptime(target_date, "%Y%m%d")
+            - timedelta(days=int(horizon))
+            + timedelta(days=1)
+        ).strftime("%Y%m%d")
+
+    cbar_titles = {
+        'pr': 'Precipitation',
+        'tas': "Temperature",
+        'mslp': 'Mean sea level pressure'
+    }
+
+    cbar_units = {
+        'pr': '(mm)',
+        'tas': "(°C)",
+        'mslp': '(hPa)'
+    }
+
     var = "__xarray_dataarray_variable__"
-    
-    
-    #
+
+    # ----------------------------------------------------------
     # Load data
-    #
-    
-    # Load ERA5 data
+    # ----------------------------------------------------------
+
     era5 = load_data(f"era5-{gt_var}")
+
     gt_ds = load_data(f"aiwq-{gt_var}")
     gt_ds = gt_ds.combine_first(era5)[gt_var]
-    
+
     BASE_URL = "https://data.ecmwf.int/ai-weatherquest/by_fc_date"
     LOCAL_DIR = os.path.join('data', 'aiwq_forecasts')
-    
+
     other_url = (
         f"{BASE_URL}/"
         f"{issuance_date}/"
@@ -4394,7 +7675,7 @@ def plot_probability_maps(
         f"{model_name}/"
         f"{gt_var}_{issuance_date}_p{fc_period}_{team_name}_{model_name}.nc"
     )
-    
+
     microduet_url = (
         f"{BASE_URL}/"
         f"{issuance_date}/"
@@ -4403,59 +7684,61 @@ def plot_probability_maps(
         f"{gt_var}_{issuance_date}_p{fc_period}_MicroEnsemble_MicroDuet.nc"
     )
 
-    other_filename = os.path.join(LOCAL_DIR, other_url.split("/")[-1])
-    microduet_filename = os.path.join(LOCAL_DIR, microduet_url.split("/")[-1])
+    other_filename = os.path.join(
+        LOCAL_DIR,
+        other_url.split("/")[-1]
+    )
 
-    if os.path.isfile(other_filename):        
+    microduet_filename = os.path.join(
+        LOCAL_DIR,
+        microduet_url.split("/")[-1]
+    )
+
+    if os.path.isfile(other_filename):
         other_ds = xr.open_dataset(other_filename)
     else:
         other_ds = open_remote_dataset(other_url)
-    
+
     if os.path.isfile(microduet_filename):
         microduet_ds = xr.open_dataset(microduet_filename)
     else:
         microduet_ds = open_remote_dataset(microduet_url)
-    
-    
-    #
+
+    # ----------------------------------------------------------
     # Domain
-    #
+    # ----------------------------------------------------------
 
     bbox_dict = {
-        # "us": (-130, -65, 20, 60),
         "us": (-130, -65, 25, 49),
-        # "eastern_us": (-102, -74, 28, 50), # (west, east, south, north)
-        "eastern_us": (-102, -74, 28, 44), # (west, east, south, north)
+        "eastern_us": (-102, -74, 28, 44),
         "europe": (-10, 45, 30, 60),
-        # "europe": (-10, 45, 28, 62), # (west, east, south, north)
     }
 
-    # Default
     if bbox is None and bbox_name is None:
         bbox_name = "us"
 
-    # Named domain
     if bbox_name is not None:
         if bbox_name not in bbox_dict:
             raise ValueError(
                 f"Unknown bbox_name '{bbox_name}'. "
                 f"Choose from {list(bbox_dict.keys())}."
             )
+
         bbox = bbox_dict[bbox_name]
 
-    # Infer a name if a predefined bbox was supplied
     elif bbox in bbox_dict.values():
         bbox_name = next(
-            name for name, value in bbox_dict.items() if value == bbox
+            name
+            for name, value in bbox_dict.items()
+            if value == bbox
         )
 
-    # Otherwise this is a custom bbox
     else:
         bbox_name = "custom"
 
-    #
+    # ----------------------------------------------------------
     # Projection
-    #
+    # ----------------------------------------------------------
 
     if bbox_name == "europe":
         proj = ccrs.LambertConformal(
@@ -4469,79 +7752,80 @@ def plot_probability_maps(
             central_latitude=38,
             standard_parallels=(30, 60),
         )
-    
-    #
+
+    # ----------------------------------------------------------
     # Retrieve data
-    #
-    
-    valid_time = pd.Timestamp(other_ds.forecast_period_start.values)
-    
+    # ----------------------------------------------------------
+
+    valid_time = pd.Timestamp(
+        other_ds.forecast_period_start.values
+    )
 
     # Compute climatology for valid_time
     clim_years = 20
+
     clim = gt_ds.where(
-        (gt_ds.time.dt.month == valid_time.month) & 
-        (gt_ds.time.dt.day == valid_time.day) &
-        (gt_ds.time.dt.year < valid_time.year) &
-        (gt_ds.time.dt.year >= valid_time.year - clim_years),
+        (gt_ds.time.dt.month == valid_time.month)
+        & (gt_ds.time.dt.day == valid_time.day)
+        & (gt_ds.time.dt.year < valid_time.year)
+        & (gt_ds.time.dt.year >= valid_time.year - clim_years),
         drop=True
     ).mean(dim="time").load()
-    # Subset anomaly to bounding box
+
+    # Ground-truth anomaly
     gt = subset_latlon(
         gt_ds.sel(time=valid_time) - clim,
         bbox,
     )
-        
+
+    # Land mask for precipitation / temperature
     if gt_var in ['tas', 'pr']:
-        lsm = xr.open_dataarray('data/lsmask.zarr', decode_timedelta=True)
+        lsm = xr.open_dataarray(
+            'data/lsmask.zarr',
+            decode_timedelta=True
+        )
+
         lsm = lsm.reindex_like(microduet_ds)
-        microduet_ds = microduet_ds.where(lsm >= 0.5, None)
-    
+
+        microduet_ds = microduet_ds.where(
+            lsm >= 0.5,
+            None
+        )
+
+    # Forecast probabilities
     md = subset_latlon(
         microduet_ds[var].sel(quintile=quintile),
         bbox,
     ) * 100
-    
+
     other = subset_latlon(
         other_ds[var].sel(quintile=quintile),
         bbox,
     ) * 100
-    
+
+    # Align forecast fields
     md, other = xr.align(md, other)
+
     land = md.notnull()
+
     other = other.where(land)
-    
+
+    # Align forecasts with observations
     md, gt = xr.align(md, gt)
+
     gt = gt.where(land)
-    
-    
-    #
-    # Interpolate forecast probabilities
-    #
-    
-    # md = interpolate(md, resolution=0.1)
-    # other = interpolate(other, resolution=0.1)
-    
-    
-    #
-    # Smooth forecast probabilities
-    #
-    
-    # md = smooth_field(md, sigma=1.5)
-    # other = smooth_field(other, sigma=1.5)
-    
-    
-    #
-    # Probability colour map (ECMWF style)
-    #
-    
+
+    # ----------------------------------------------------------
+    # Probability colour map
+    # ----------------------------------------------------------
+
     bounds = [
         0, 3, 6, 9, 12, 15,
         25, 30, 35, 40, 45,
         50, 55, 60, 65, 70,
         75, 80, 85, 90, 95, 100,
     ]
-    
+
     colors = [
         "#2b2b2b",
         "#46515e",
@@ -4565,28 +7849,28 @@ def plot_probability_maps(
         "#b018d5",
         "#4c003f",
     ]
-    
+
     cmap = mcolors.ListedColormap(colors)
     norm = mcolors.BoundaryNorm(bounds, cmap.N)
-    
 
-    #
+    # ----------------------------------------------------------
     # Ground truth colour map
-    #
+    # ----------------------------------------------------------
 
-    # vmax = float(np.nanmax(np.abs(gt.quantile([0.02, 0.98]))))
-    # vmin = -vmax
     vmin = float(gt.quantile(0.02))
     vmax = float(gt.quantile(0.98))
 
     gt_levels = np.linspace(vmin, vmax, 13)
     gt_cmap = plt.get_cmap("RdBu_r")
-    gt_norm = mcolors.BoundaryNorm(gt_levels, gt_cmap.N)
-    
-    #
-    # Projection
-    #
-        
+    gt_norm = mcolors.BoundaryNorm(
+        gt_levels,
+        gt_cmap.N
+    )
+
+    # ----------------------------------------------------------
+    # Figure
+    # ----------------------------------------------------------
+
     fig, axs = plt.subplots(
         1,
         3,
@@ -4594,87 +7878,75 @@ def plot_probability_maps(
         subplot_kw={"projection": proj},
         constrained_layout=True,
     )
-    
-    #
-    # Figure title
-    #
-    
+
+    # ----------------------------------------------------------
+    # Figure title information
+    # ----------------------------------------------------------
+
     start = mdates.num2date(
-        mdates.date2num(other_ds.forecast_period_start.values)
+        mdates.date2num(
+            other_ds.forecast_period_start.values
+        )
     )
-    
+
     end = start + timedelta(days=6)
 
     if start.month == end.month:
-        date_str = f"{start:%b} {start:%d}\u2013{end:%d, %Y}"
+        date_str = (
+            f"{start:%b} {start:%d}–{end:%d, %Y}"
+        )
     else:
-        date_str = f"{start:%d %b %Y} \u2013 {end:%d %b %Y}"
-    
-    # fig.suptitle(
-    #     f"{start:%a %d %b %Y} - {end:%a %d %b %Y}   —   Quintile interval : >= {int(quintile*100)-20}%",
-    #     fontsize=14,
-    #     y=y_suptitle,
-    # )
-    
-    
-    #
+        date_str = (
+            f"{start:%d %b %Y} – {end:%d %b %Y}"
+        )
+
+    # ----------------------------------------------------------
     # Common map styling
-    #
-    
+    # ----------------------------------------------------------
+
     def decorate(ax):
-    
-        ax.set_extent(bbox, crs=ccrs.PlateCarree())
-    
+
+        ax.set_extent(
+            bbox,
+            crs=ccrs.PlateCarree()
+        )
+
         ax.add_feature(
             cfeature.LAND,
-            facecolor="white", #"grey",
+            facecolor="white",
             edgecolor="black",
         )
-    
+
         ax.add_feature(
             cfeature.OCEAN,
             facecolor="white",
             zorder=0,
         )
-    
+
         ax.add_feature(
             cfeature.COASTLINE,
             edgecolor="black",
         )
-    
+
         ax.add_feature(
             cfeature.BORDERS,
             facecolor="none",
             edgecolor="black",
             linewidth=0.5,
         )
-    
-        # ax.add_feature(
-        #     cfeature.STATES,
-        #     linewidth=0.25,
-        #     edgecolor="0.6",
-        # )
 
         ax.add_feature(
             cfeature.LAKES,
             edgecolor="black",
             linewidth=0.5,
         )
-    
-        # ax.gridlines(
-        #     linewidth=0.5,
-        #     color="0.82",
-        #     draw_labels=False,
-        #     xlocs=np.arange(-180, 181, 20),
-        #     ylocs=np.arange(-90, 91, 10),
-        # )
-    
-    #
+
+    # ----------------------------------------------------------
     # Ground truth
-    #
-    
+    # ----------------------------------------------------------
+
     decorate(axs[0])
-    
+
     gt_im = axs[0].pcolormesh(
         gt.longitude,
         gt.latitude,
@@ -4684,26 +7956,26 @@ def plot_probability_maps(
         shading="nearest",
         transform=ccrs.PlateCarree(),
     )
-    
+
     axs[0].set_title(
         "Observed (ERA5)",
         fontsize=18,
         weight="bold",
         pad=16,
     )
-    
-    #
+
+    # ----------------------------------------------------------
     # Forecast probabilities
-    #
-    
+    # ----------------------------------------------------------
+
     for ax, field, title in zip(
         axs[1:],
         [md, other],
         ["MicroDuet", model_name],
     ):
-    
+
         decorate(ax)
-    
+
         im = ax.pcolormesh(
             field.longitude,
             field.latitude,
@@ -4713,89 +7985,261 @@ def plot_probability_maps(
             shading="nearest",
             transform=ccrs.PlateCarree(),
         )
-        
-        # im = ax.contourf(
-        #     field.longitude,
-        #     field.latitude,
-        #     field,
-        #     levels=bounds,
-        #     cmap=cmap,
-        #     norm=norm,
-        #     extend="neither",
-        #     transform=ccrs.PlateCarree(),
-        #     antialiased=True,
-        # )
-    
+
         ax.set_title(
-            f"Debiased {title}" if title == "ECMWF" else title,
+            f"Debiased {title}"
+            if title == "ECMWF"
+            else title,
             fontsize=18,
             weight="bold",
             pad=16,
         )
 
-    
-
-    #
+    # ----------------------------------------------------------
     # Colourbars
-    #
-    
-    # Same height and vertical position for both colourbars
+    # ----------------------------------------------------------
+
     cbar_height = 0.018
     cbar_y = 0.25
-    
-    # Ground truth colourbar
+
     cbar_gt_ax = fig.add_axes(
         [0.04, cbar_y, 0.25, cbar_height]
     )
-    
+
     cbar_gt = fig.colorbar(
         gt_im,
         cax=cbar_gt_ax,
         orientation="horizontal",
     )
-    
+
     cbar_gt.set_label(
-        f"{cbar_titles[gt_var]} anomaly {cbar_units[gt_var]}: {date_str}",
+        f"{cbar_titles[gt_var]} anomaly "
+        f"{cbar_units[gt_var]}: {date_str}",
         fontsize=14,
     )
-    
-    cbar_gt.ax.tick_params(labelsize=12)
-    
-    
-    # Probability colourbar
+
+    cbar_gt.ax.tick_params(
+        labelsize=12
+    )
+
     cbar_prob_ax = fig.add_axes(
         [0.39, cbar_y, 0.55, cbar_height]
     )
-    
+
     cbar_prob = fig.colorbar(
         im,
         cax=cbar_prob_ax,
         orientation="horizontal",
         ticks=bounds,
     )
-    
-    quintile_str = 'highest' if quintile == 1 else 'lowest'
-    
+
+    quintile_str = (
+        'highest'
+        if quintile == 1
+        else 'lowest'
+    )
+
     cbar_prob.set_label(
-        f"Predicted probability of {quintile_str} {cbar_titles[gt_var].lower()} quintile: {date_str}",
+        f"Predicted probability of {quintile_str} "
+        f"{cbar_titles[gt_var].lower()} quintile: "
+        f"{date_str}",
         fontsize=14,
     )
-    
-    cbar_prob.ax.tick_params(labelsize=12)
-    
-    # Save/Show
-    filename_bbox = bbox_name if bbox_name else '_'.join(map(str, bbox))
+
+    cbar_prob.ax.tick_params(
+        labelsize=12
+    )
+
+    # ----------------------------------------------------------
+    # Save source data
+    # ----------------------------------------------------------
+
+    if source_data:
+
+        # ------------------------------------------------------
+        # This is a SEPARATE workbook for probability maps.
+        # It is not the workbook used by plot_bias_maps_3x4.
+        # ------------------------------------------------------
+
+        source_data_filename = os.path.join(
+            SRC_DATA_DIR,
+            source_data_filename,
+        )
+
+        # Make sure the directory exists
+        os.makedirs(
+            os.path.dirname(source_data_filename),
+            exist_ok=True
+        )
+
+        # Use append mode if this probability-map workbook
+        # already exists; otherwise create a new workbook.
+        file_exists = os.path.exists(source_data_filename)
+
+        if file_exists:
+            writer_kwargs = {
+                "path": source_data_filename,
+                "engine": "openpyxl",
+                "mode": "a",
+                "if_sheet_exists": "new",
+            }
+        else:
+            writer_kwargs = {
+                "path": source_data_filename,
+                "engine": "openpyxl",
+                "mode": "w",
+            }
+
+        # ------------------------------------------------------
+        # Base name identifies this particular forecast.
+        # ------------------------------------------------------
+
+        base_name = (
+            f"{gt_var}_{issuance_date}_"
+            f"p{fc_period}_{bbox_name}"
+        )
+
+        def make_sheet_name(base, suffix):
+            """
+            Generate a valid Excel sheet name.
+
+            Excel limits sheet names to 31 characters.
+            """
+
+            name = f"{base}_{suffix}"
+
+            # Remove characters that Excel does not allow
+            invalid_chars = ['\\', '/', '*', '?', ':', '[', ']']
+            for char in invalid_chars:
+                name = name.replace(char, '_')
+
+            # Excel sheet names max out at 31 characters.
+            return name[:31]
+
+        # ------------------------------------------------------
+        # Data to save
+        #
+        # These are exactly the fields displayed in the figure.
+        # ------------------------------------------------------
+
+        source_fields = {
+            "observed": gt,
+            "microduet": md,
+            model_name.lower(): other,
+        }
+
+        # ------------------------------------------------------
+        # Metadata
+        # ------------------------------------------------------
+
+        metadata = {
+            "gt_id": gt_id,
+            "gt_variable": gt_var,
+            "horizon": horizon,
+            "forecast_period": fc_period,
+            "issuance_date": issuance_date,
+            "target_date": target_date,
+            "valid_time": str(valid_time),
+            "team_name": team_name,
+            "model_name": model_name,
+            "quintile": quintile,
+            "bbox_name": bbox_name,
+            "bbox_west": bbox[0],
+            "bbox_east": bbox[1],
+            "bbox_south": bbox[2],
+            "bbox_north": bbox[3],
+            "climatology_years": clim_years,
+            "source_other_url": other_url,
+            "source_microduet_url": microduet_url,
+        }
+
+        metadata_df = pd.DataFrame(
+            list(metadata.items()),
+            columns=["Parameter", "Value"]
+        )
+
+        # ------------------------------------------------------
+        # Write to the separate probability-map workbook
+        # ------------------------------------------------------
+
+        with pd.ExcelWriter(**writer_kwargs) as writer:
+
+            # --------------------------------------------------
+            # Metadata
+            # --------------------------------------------------
+
+            metadata_sheet = make_sheet_name(
+                base_name,
+                "metadata"
+            )
+
+            metadata_df.to_excel(
+                writer,
+                sheet_name=metadata_sheet,
+                index=False,
+            )
+
+            # --------------------------------------------------
+            # Spatial fields
+            # --------------------------------------------------
+
+            for field_name, data in source_fields.items():
+
+                # Convert DataArray to a self-contained table
+                # containing latitude/longitude and values.
+                data_df = data.to_dataframe(
+                    name="value"
+                ).reset_index()
+
+                sheet_name = make_sheet_name(
+                    base_name,
+                    field_name
+                )
+
+                data_df.to_excel(
+                    writer,
+                    sheet_name=sheet_name,
+                    index=False,
+                    na_rep="NaN",
+                )
+
+        print(
+            f"Source data saved to: "
+            f"{source_data_filename}"
+        )
+
+    # ----------------------------------------------------------
+    # Save / Show
+    # ----------------------------------------------------------
+
+    filename_bbox = (
+        bbox_name
+        if bbox_name
+        else '_'.join(map(str, bbox))
+    )
+
     filename = os.path.join(
         OUT_DIR,
-        f"extreme_weather_{gt_var}_{issuance_date}_p{fc_period}_{filename_bbox}.pdf"
+        f"extreme_weather_{gt_var}_"
+        f"{issuance_date}_p{fc_period}_"
+        f"{filename_bbox}.pdf"
     )
-    
+
     if save_fig:
-        plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
-        print(f"Figure saved: {filename}")
-    
-    # plt.tight_layout()
-    
+
+        plt.savefig(
+            filename,
+            dpi=300,
+            transparent=True,
+            bbox_inches='tight'
+        )
+
+        print(
+            f"Figure saved: {filename}"
+        )
+
+        plt.savefig(filename.replace(".pdf", ".eps"), dpi=300, transparent=True, bbox_inches='tight')
+
     if show_fig:
         plt.show()
     else:
