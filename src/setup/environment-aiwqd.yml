@@ -169,6 +169,7 @@ dependencies:
       - dulwich==0.24.10
       - ecmwf-api-client==1.6.5
       - ensureconda==1.6.0
+      - et-xmlfile==2.0.0
       - executing==2.2.0
       - fabric==3.2.2
       - fastjsonschema==2.21.1
@@ -250,6 +251,7 @@ dependencies:
       - numcodecs==0.15.1
       - numpy==2.3.2
       - oauthlib==3.3.1
+      - openpyxl==3.1.5
       - overrides==7.7.0
       - packaging==25.0
       - pandas==2.3.1
