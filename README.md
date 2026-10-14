@@ -2,17 +2,19 @@
 
 Probabilistic bias correction (PBC) is a machine learning framework for improving subseasonal forecasts from dynamical, AI, or hybrid prediction systems. Given a raw ensemble of deterministic forecasts, PBC outputs learning-enhanced probabilities designed to correct systematic errors while preserving the predictive signal in the underlying model. 
 
-To learn more, see the accompanying study:
+To learn more, see the accompanying study in Nature:
 
-[Advancing Subseasonal Forecasting with Machine Learning](https://arxiv.org/abs/2604.16238)
+[Advancing Subseasonal Forecasting with Machine Learning](https://www.nature.com/articles/s41586-026-11126-x)
 
 ```bib
 @article{guan2026advancing,
-  author = {Hannah Guan and Soukayna Mouatadid and Paulo Orenstein and Judah Cohen and Haiyu Dong and Zekun Ni and Jeremy Berman and Genevieve Flaspohler and Alex Lu and Jakob Schloer and Joshua Talib and Jonathan A. Weyn and Lester Mackey},
-  title = {Advancing Subseasonal Forecasting with Machine Learning},
-  journal={arXiv preprint arXiv:2604.16238},
-  year = {2026}
-}
+	author = {Guan, Hannah and Mouatadid, Soukayna and Orenstein, Paulo and Cohen, Judah and Dong, Haiyu and Ni, Zekun and Berman, Jeremy and Flaspohler, Genevieve and Lu, Alex and Schloer, Jakob and Talib, Joshua and Weyn, Jonathan A. and Mackey, Lester},
+	doi = {10.1038/s41586-026-11126-x},
+	isbn = {1476-4687},
+	journal = {Nature},
+	title = {Advancing subseasonal forecasting with machine learning},
+	url = {https://doi.org/10.1038/s41586-026-11126-x},
+	year = {2026},
 ```
 
 ## System Requirements and Recommendations
