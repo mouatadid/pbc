@@ -15,6 +15,7 @@ To learn more, see the accompanying study in Nature:
 	title = {Advancing subseasonal forecasting with machine learning},
 	url = {https://doi.org/10.1038/s41586-026-11126-x},
 	year = {2026},
+}
 ```
 
 ## System Requirements and Recommendations
