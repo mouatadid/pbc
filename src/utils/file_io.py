@@ -1,7 +1,30 @@
 # File input and output utility functions
+import importlib.resources
 import os
 import subprocess
 from pathlib import Path
+
+
+def resource_filename(package_or_requirement: str, resource_name: str) -> str:
+    """Resolve a package resource file path using standard library importlib.resources.
+    Drop-in replacement for the deprecated pkg_resources.resource_filename.
+    """
+    if package_or_requirement == "__main__":
+        import sys
+
+        main_mod = sys.modules.get("__main__")
+        main_file = getattr(main_mod, "__file__", None)
+        if main_file:
+            return os.path.join(os.path.dirname(os.path.abspath(main_file)), resource_name)
+        return os.path.abspath(resource_name)
+    try:
+        ref = importlib.resources.files(package_or_requirement)
+        for part in Path(resource_name).parts:
+            ref = ref.joinpath(part)
+        return str(ref)
+    except Exception:
+        return os.path.abspath(resource_name)
+
 
 def make_directories(dirname):
     """Creates directory and parent directories with 777 permissions
@@ -10,9 +33,10 @@ def make_directories(dirname):
     Args:
       dirname - directory path string or pathlib.Path
     """
-    if dirname != '' and dirname != Path(''):
+    if dirname != "" and dirname != Path(""):
         os.umask(0)
         os.makedirs(dirname, exist_ok=True, mode=0o777)
+
 
 def make_parent_directories(file_path):
     """Creates parent directories of a given file with 777 permissions
@@ -22,6 +46,7 @@ def make_parent_directories(file_path):
       file_path - file path string or pathlib.Path
     """
     make_directories(os.path.dirname(file_path))
+
 
 def symlink(src, dest, use_abs_path=False):
     """Symlinks dest to point to src; if dest was previously a symlink,
@@ -41,8 +66,7 @@ def symlink(src, dest, use_abs_path=False):
     subprocess.call(cmd, shell=True)
 
 
-def set_file_permissions(file_path, skip_if_exists=False, throw=False,
-                         mode=0o777):
+def set_file_permissions(file_path, skip_if_exists=False, throw=False, mode=0o777):
     """Set file/folder permissions.
 
     Args:
@@ -66,8 +90,8 @@ def set_file_permissions(file_path, skip_if_exists=False, throw=False,
             else:
                 pass
 
-def set_recursive_permissions(dir_path, skip_if_exists=False, throw=False,
-                              permissions="a+rwx"):
+
+def set_recursive_permissions(dir_path, skip_if_exists=False, throw=False, permissions="a+rwx"):
     """Recursively set permissions for a directory and all elements thereof.
 
     Args:

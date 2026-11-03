@@ -15,14 +15,14 @@
 # ---
 
 # %%
-'''
+"""
 Generates predictions for each of the Persistence++-Debiased ECMWF parameter configurations
 
 Example usage: (include -p to preview commands without running batch_predict.py)
   python src/models/perpp_debias/bulk_batch_predict.py era5-f1_mslp 19 -t std_test -c "src/batch/batch_python.sh -m 50 -c 14" -p
 
 Example usages: (exclude -p to run batch_predict.py)
-  python src/models/perpp_debias/bulk_batch_predict.py era5-f1_mslp 19 -t std_test -c "src/batch/batch_python.sh -m 50 -c 14" 
+  python src/models/perpp_debias/bulk_batch_predict.py era5-f1_mslp 19 -t std_test -c "src/batch/batch_python.sh -m 50 -c 14"
   for var in pr tas; do
     for f in f1 f2 f3 f4; do
       for horizon in 19 26; do
@@ -50,7 +50,7 @@ Example usages: (exclude -p to run batch_predict.py)
         python src/models/perpp_debias/bulk_batch_predict.py era5-${f}_${var} $horizon -t std_future -c "src/batch/batch_python.sh -m 35 -c 10"
       done
     done
-  done 
+  done
   for var in tas pr; do
     for f in F90 F10 F95 F5; do
       for horizon in 19 26; do
@@ -80,27 +80,29 @@ Named args:
     (default: False)
   --num_seeds (-n): number of date_order_seeds to use for parallelizing batch predict;
     (default: 0)
-'''
+"""
 
 # %%
 import os
 import time
+
 from utils.notebook import isnotebook
+
 if isnotebook():
     # Change to aiwq working directory
     home_dir = os.path.expanduser("~")
     os.chdir(os.path.join(home_dir, "aiwq"))
     # Autoreload packages that are modified
-    get_ipython().run_line_magic('load_ext', 'autoreload')
-    get_ipython().run_line_magic('autoreload', '2')
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 else:
     from argparse import ArgumentParser
 # Imports
 import subprocess
-from pkg_resources import resource_filename
-from models.utils.general_util import printf, tic, toc
-from models.utils.models_util import get_submodel_name
-from models.utils.eval_util import get_named_targets
+
+from utils.file_io import resource_filename
+
+from models.utils.general_util import printf
 
 # %%
 forecast = "debias"
@@ -111,17 +113,26 @@ if not isnotebook():
     # If notebook run as a script, parse command-line arguments
     parser = ArgumentParser()
     parser.add_argument("pos_vars", nargs="*")  # gt_id and horizon
-    parser.add_argument('--target_dates', '-t', default="std_test")
-    parser.add_argument('--cmd_prefix', '-c', default="python")
-    parser.add_argument('--preview', '-p', default=False, action='store_true',
-                       help="preview batch commands to be run without executing them")
-    parser.add_argument('--num_seeds', '-n', default=0,
-                       help="number of date_order_seeds to use for parallelizing batch prediction")
-    
+    parser.add_argument("--target_dates", "-t", default="std_test")
+    parser.add_argument("--cmd_prefix", "-c", default="python")
+    parser.add_argument(
+        "--preview",
+        "-p",
+        default=False,
+        action="store_true",
+        help="preview batch commands to be run without executing them",
+    )
+    parser.add_argument(
+        "--num_seeds",
+        "-n",
+        default=0,
+        help="number of date_order_seeds to use for parallelizing batch prediction",
+    )
+
     # Assign variables
     args = parser.parse_args()
-    gt_id = args.pos_vars[0]  
-    horizon = args.pos_vars[1] 
+    gt_id = args.pos_vars[0]
+    horizon = args.pos_vars[1]
     target_dates = args.target_dates
     cmd_prefix = args.cmd_prefix.strip()
     preview = args.preview
@@ -130,8 +141,8 @@ else:
     # Otherwise, specify arguments interactively
     gt_id = "era5-f1_tas"
     horizon = "19"
-    target_dates = "20180105" 
-    cmd_prefix = "python" 
+    target_dates = "20180105"
+    cmd_prefix = "python"
     preview = True
     num_seeds = 0
 
@@ -141,25 +152,25 @@ train_years = "all"
 margin = "None"
 
 # %%
-predict_script = resource_filename(__name__, os.path.join('batch_predict.py'))
+predict_script = resource_filename(__name__, os.path.join("batch_predict.py"))
 task_str = f"{gt_id} {horizon} -t {target_dates}"
 if cmd_prefix == None:
     cmd_prefix = "python"
 # If num_seeds is not 0, iterate over multiple date_order_seeds
 if num_seeds == 0:
-    param_strs=[f"-y {train_years} -m {margin} -s None"]
-else: 
+    param_strs = [f"-y {train_years} -m {margin} -s None"]
+else:
     seeds = range(num_seeds)
     param_strs = [f"-y {train_years} -m {margin} -s {seed}" for seed in seeds]
 
 for i, param_str in enumerate(param_strs):
-    if 'python' in cmd_prefix:
+    if "python" in cmd_prefix:
         cmd = f"{cmd_prefix} {predict_script} {task_str} {param_str}"
     else:
-        cmd = f"{cmd_prefix} \"python {predict_script} {task_str} {param_str}\" &"
+        cmd = f'{cmd_prefix} "python {predict_script} {task_str} {param_str}" &'
     printf(f"Running:\n{cmd}")
     if not preview:
         subprocess.call(cmd, shell=True)
-        sleep_time = 0 #.1
+        sleep_time = 0  # .1
         print(f"Sleeping for {sleep_time} seconds")
         time.sleep(sleep_time)

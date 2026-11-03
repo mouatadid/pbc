@@ -12,6 +12,7 @@ license = { file = "LICENSE" }
 dependencies = [
     "cartopy>=0.22",
     "cdsapi>=0.7.0",
+    "dask[complete]>=2024.1.0",
     "eccodes>=1.7.0",
     "filelock>=3.13.0",
     "huggingface-hub>=0.23.0",

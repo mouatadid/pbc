@@ -82,9 +82,9 @@ The following examples demonstrate how to generate PBC-ECMWF forecasts for the 2
   # Form predictions for each quintile
   for k in 1 2 3 4; do
     # First generate and evaluate predictions for each model configuration
-    python src/models/ecmwfpp/bulk_batch_predict.py era5-f{k}_mslp 19 -t std_tune -wm
+    python src/models/ecmwfpp/bulk_batch_predict.py era5-f${k}_mslp 19 -t std_tune -wm
     # Then select a model configuration using the tuner
-    python src/models/tuner/batch_predict.py era5-f{k}_mslp 19 -mn ecmwfpp -t std_test
+    python src/models/tuner/batch_predict.py era5-f${k}_mslp 19 -mn ecmwfpp -t std_test
   done
   # Project forecasts onto the space of valid distributions
   python src/models/projector/batch_predict.py era5-mslp 19 -mn tuned_ecmwfpp -t std_test
@@ -93,7 +93,7 @@ The following examples demonstrate how to generate PBC-ECMWF forecasts for the 2
   ```bash
   # Form predictions for each quintile
   for k in 1 2 3 4; do
-    python src/models/perpp_ecmwf/bulk_batch_predict.py era5-f{k}_mslp 19 -t std_test
+    python src/models/perpp_ecmwf/bulk_batch_predict.py era5-f${k}_mslp 19 -t std_test
   done
   # Project forecasts onto the space of valid distributions
   python src/models/projector/batch_predict.py era5-mslp 19 -mn perpp_ecmwf -t std_test
@@ -103,7 +103,7 @@ The following examples demonstrate how to generate PBC-ECMWF forecasts for the 2
   ```bash
   # Form predictions for each quintile
   for k in 1 2 3 4; do
-    python src/models/abc_ecmwf/bulk_batch_predict.py era5-f{k}_mslp 19 -t std_test
+    python src/models/pbc_ecmwf/bulk_batch_predict.py era5-f${k}_mslp 19 -t std_test
   done
   ```
 

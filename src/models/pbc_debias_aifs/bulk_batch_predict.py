@@ -15,15 +15,15 @@
 # ---
 
 # %%
-'''
+"""
 Generates predictions for each of the PBC Debiased AIFS parameter configurations
 
 Example usage: (include -p to preview commands without running batch_predict.py)
   python src/models/pbc_debias_aifs/bulk_batch_predict.py era5-f1_tas 19 -t std_aifs_forecast -c "src/batch/batch_python.sh -m 20 -c 8" -p
 
 Example usage: (exclude -p to run batch_predict.py)
-  python src/models/pbc_debias_aifs/bulk_batch_predict.py era5-f1_tas 19 -t std_aifs_forecast -c "src/batch/batch_python.sh -m 20 -c 8" 
-  python src/models/pbc_debias_aifs/bulk_batch_predict.py era5-f1_tas 19 -t std_aifs_forecast -c "src/batch/batch_python.sh -m 1 -c 1" 
+  python src/models/pbc_debias_aifs/bulk_batch_predict.py era5-f1_tas 19 -t std_aifs_forecast -c "src/batch/batch_python.sh -m 20 -c 8"
+  python src/models/pbc_debias_aifs/bulk_batch_predict.py era5-f1_tas 19 -t std_aifs_forecast -c "src/batch/batch_python.sh -m 1 -c 1"
   # (include -o to overwrite existing predictions)
   for dates in std_future; do
   for var in tas mslp pr; do
@@ -57,43 +57,55 @@ Named args:
     (default: False)
   --num_seeds (-n): number of date_order_seeds to use for parallelizing batch predict;
     (default: 0)
-'''
+"""
 
 # %%
 import os
 import time
+
 from utils.notebook import isnotebook
+
 if isnotebook():
     # Change to aiwq working directory
     home_dir = os.path.expanduser("~")
     os.chdir(os.path.join(home_dir, "aiwq"))
     # Autoreload packages that are modified
-    get_ipython().run_line_magic('load_ext', 'autoreload')
-    get_ipython().run_line_magic('autoreload', '2')
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 else:
     from argparse import ArgumentParser
 # Imports
 import subprocess
-from pkg_resources import resource_filename
-from models.utils.general_util import printf, tic, toc
-from models.utils.models_util import get_submodel_name
-from models.utils.eval_util import get_named_targets
+
+from utils.file_io import resource_filename
+
+from models.utils.general_util import printf
 
 # %%
 if not isnotebook():
     # If notebook run as a script, parse command-line arguments
     parser = ArgumentParser()
     parser.add_argument("pos_vars", nargs="*")  # gt_id and horizon
-    parser.add_argument('--target_dates', '-t', default="std_aifs_forecast")
-    parser.add_argument('--cmd_prefix', '-c', default="python")
-    parser.add_argument('--preview', '-p', default=False, action='store_true',
-                       help="preview batch commands to be run without executing them")
-    parser.add_argument('--overwrite', '-o', default=False, action='store_true',
-                        help="overwrite existing prediction files")
+    parser.add_argument("--target_dates", "-t", default="std_aifs_forecast")
+    parser.add_argument("--cmd_prefix", "-c", default="python")
+    parser.add_argument(
+        "--preview",
+        "-p",
+        default=False,
+        action="store_true",
+        help="preview batch commands to be run without executing them",
+    )
+    parser.add_argument(
+        "--overwrite",
+        "-o",
+        default=False,
+        action="store_true",
+        help="overwrite existing prediction files",
+    )
     # Assign variables
     args = parser.parse_args()
-    gt_id = args.pos_vars[0]  
-    horizon = args.pos_vars[1] 
+    gt_id = args.pos_vars[0]
+    horizon = args.pos_vars[1]
     target_dates = args.target_dates
     cmd_prefix = args.cmd_prefix.strip()
     preview = args.preview
@@ -102,8 +114,8 @@ else:
     # Otherwise, specify arguments interactively
     gt_id = "era5-f1_tas"
     horizon = "19"
-    target_dates = "20180105" 
-    cmd_prefix = "python" 
+    target_dates = "20180105"
+    cmd_prefix = "python"
     preview = True
     overwrite = False
 
@@ -113,7 +125,7 @@ train_years = "all"
 margin = "None"
 
 # %%
-predict_script = resource_filename(__name__, os.path.join('batch_predict.py'))
+predict_script = resource_filename(__name__, os.path.join("batch_predict.py"))
 task_str = f"{gt_id} {horizon} -t {target_dates}"
 if overwrite:
     task_str += " -o"
@@ -122,16 +134,16 @@ if cmd_prefix is None:
 
 simplex = "False"
 equal = "True"
-param_strs=[f"-y {train_years} -m {margin} -s {simplex} -e {equal}"]
+param_strs = [f"-y {train_years} -m {margin} -s {simplex} -e {equal}"]
 
 for i, param_str in enumerate(param_strs):
-    if 'python' in cmd_prefix:
+    if "python" in cmd_prefix:
         cmd = f"{cmd_prefix} {predict_script} {task_str} {param_str}"
     else:
-        cmd = f"{cmd_prefix} \"python {predict_script} {task_str} {param_str}\" &"
+        cmd = f'{cmd_prefix} "python {predict_script} {task_str} {param_str}" &'
     printf(f"Running:\n{cmd}")
     if not preview:
         subprocess.call(cmd, shell=True)
-        sleep_time = .0
+        sleep_time = 0.0
         print(f"Sleeping for {sleep_time} seconds")
         time.sleep(sleep_time)
