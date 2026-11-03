@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pbc"
+version = "0.1.0"
+description = "Probabilistic Bias Correction for Subseasonal Forecasting"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "cartopy>=0.22",
+    "cdsapi>=0.7.0",
+    "dask[complete]>=2024.1.0",
+    "eccodes>=1.7.0",
+    "filelock>=3.13.0",
+    "huggingface-hub>=0.23.0",
+    "matplotlib>=3.8.0",
+    "netcdf4>=1.6.5",
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+    "py7zr>=0.20.0",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.4.0",
+    "scipy>=1.12.0",
+    "seaborn>=0.13.0",
+    "torch>=2.2.0",
+    "tqdm>=4.66.0",
+    "ttictoc>=0.5.6",
+    "xarray>=2024.01.0",
+    "zarr>=2.16.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "pre-commit>=3.5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
