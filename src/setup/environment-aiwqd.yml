@@ -352,4 +352,3 @@ dependencies:
       - xyzservices==2025.4.0
       - zarr==3.0.8
       - zstandard==0.25.0
-prefix: /home/lmackey/.conda/envs/aiwqd
